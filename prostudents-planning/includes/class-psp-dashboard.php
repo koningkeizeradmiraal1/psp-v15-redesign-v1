@@ -10,7 +10,8 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_delete_dienst',      [self::class, 'ajax_delete_dienst']);
         add_action('wp_ajax_psp_koppel',             [self::class, 'ajax_koppel']);
         add_action('wp_ajax_psp_ontkoppel',          [self::class, 'ajax_ontkoppel']);
-        add_action('wp_ajax_psp_delete_beschikbaarheid', [self::class, 'ajax_delete_beschikbaarheid']);
+        add_action('wp_ajax_psp_delete_beschikbaarheid',        [self::class, 'ajax_delete_beschikbaarheid']);
+        add_action('wp_ajax_psp_save_beschikbaarheid_admin',    [self::class, 'ajax_save_beschikbaarheid_admin']);
         add_action('wp_ajax_psp_save_tarief',            [self::class, 'ajax_save_tarief']);
         add_action('wp_ajax_psp_tarieven_todo',          [self::class, 'ajax_tarieven_todo']);
         add_action('wp_ajax_psp_get_studenten',          [self::class, 'ajax_get_studenten']);
@@ -101,10 +102,82 @@ class PSP_Dashboard {
 
   <!-- TAB: Studenten -->
   <div id="psp-tab-studenten" class="psp-tab-panel" style="display:none">
-    <div class="psp-panel-header"><h3>Ingediende beschikbaarheid</h3></div>
+    <div class="psp-panel-header">
+      <h3>Ingediende beschikbaarheid</h3>
+      <button class="psp-btn-primary psp-btn-sm" id="psp-beschikbaar-toevoegen-btn">+ Toevoegen</button>
+    </div>
     <div id="psp-studenten-tabel-wrap"><p class="psp-empty-msg">Laden…</p></div>
   </div>
 
+  <!-- MODAL: Beschikbaarheid toevoegen/bewerken (medewerker) -->
+  <div id="psp-beschikbaar-modal" class="psp-modal" style="display:none">
+    <div class="psp-modal-box">
+      <div class="psp-modal-header">
+        <h2 id="psp-beschikbaar-modal-titel">Beschikbaarheid toevoegen</h2>
+        <button class="psp-modal-close" data-modal="psp-beschikbaar-modal">✕</button>
+      </div>
+      <div class="psp-modal-body">
+        <input type="hidden" id="psp-besch-id" value="0">
+
+        <div class="psp-form-row2">
+          <div class="psp-field">
+            <label>Student</label>
+            <select id="psp-besch-student-select">
+              <option value="">— Selecteer student —</option>
+            </select>
+          </div>
+          <div class="psp-field">
+            <label>Week (maandag)</label>
+            <input type="date" id="psp-besch-week">
+          </div>
+        </div>
+
+        <div class="psp-form-row2" id="psp-besch-handmatig-wrap" style="display:none">
+          <div class="psp-field">
+            <label>Naam</label>
+            <input type="text" id="psp-besch-naam" placeholder="Voor- en achternaam">
+          </div>
+          <div class="psp-field">
+            <label>E-mailadres</label>
+            <input type="email" id="psp-besch-email" placeholder="student@email.nl">
+          </div>
+        </div>
+
+        <div class="psp-field">
+          <label>Telefoonnummer</label>
+          <input type="text" id="psp-besch-telefoon" placeholder="06 — xx xx xx xx" style="max-width:220px">
+        </div>
+
+        <div class="psp-field">
+          <label>Beschikbaarheid per dag</label>
+          <div id="psp-besch-dagen-wrap">
+            <?php foreach ( ['ma'=>'Maandag','di'=>'Dinsdag','wo'=>'Woensdag','do'=>'Donderdag','vr'=>'Vrijdag','za'=>'Zaterdag'] as $dk => $label ): ?>
+            <div class="psp-besch-dag-rij" style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f5f5;">
+              <label style="display:flex;align-items:center;gap:6px;min-width:110px;font-size:.88rem;font-weight:600;cursor:pointer">
+                <input type="checkbox" class="psp-besch-dag-check" data-dag="<?php echo $dk; ?>" style="accent-color:#d31775;width:16px;height:16px">
+                <?php echo $label; ?>
+              </label>
+              <input type="time" class="psp-besch-van" data-dag="<?php echo $dk; ?>" value="08:00" disabled
+                style="border:1px solid #e8e8e8;border-radius:6px;padding:5px 8px;font-size:.85rem;width:100px;opacity:.4">
+              <span style="color:#aaa;font-size:.8rem">t/m</span>
+              <input type="time" class="psp-besch-tot" data-dag="<?php echo $dk; ?>" value="17:00" disabled
+                style="border:1px solid #e8e8e8;border-radius:6px;padding:5px 8px;font-size:.85rem;width:100px;opacity:.4">
+            </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
+        <div class="psp-field" style="margin-top:12px">
+          <label>Opmerkingen / voorkeur</label>
+          <textarea id="psp-besch-voorkeur" rows="2" style="width:100%;border:1px solid #e8e8e8;border-radius:7px;padding:8px 10px;font-size:.875rem;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="psp-modal-footer">
+        <button class="psp-btn-primary" id="psp-besch-opslaan-btn">Opslaan</button>
+        <button class="psp-btn-ghost" data-modal="psp-beschikbaar-modal">Annuleren</button>
+      </div>
+    </div>
+  </div>
 
   <!-- TAB: Inplannen (studenten links, diensten rechts) -->
   <div id="psp-tab-inplannen" class="psp-tab-panel" style="display:none">
@@ -495,6 +568,54 @@ class PSP_Dashboard {
         if ( ! $id ) wp_send_json_error();
         PSP_DB::delete_dienst( $id );
         wp_send_json_success( array( 'message' => 'Dienst verwijderd.' ) );
+    }
+
+    /* ─────────────── AJAX: beschikbaarheid opslaan door medewerker ─────────────── */
+    public static function ajax_save_beschikbaarheid_admin() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error( array('message'=>'Geen toegang.') );
+
+        $id         = (int) ( $_POST['id'] ?? 0 );
+        $naam       = sanitize_text_field( $_POST['naam'] ?? '' );
+        $email      = sanitize_email( $_POST['email'] ?? '' );
+        $telefoon   = sanitize_text_field( $_POST['telefoon'] ?? '' );
+        $week_start = sanitize_text_field( $_POST['week_start'] ?? '' );
+        $dagen_raw  = $_POST['dagen'] ?? '{}';
+        $voorkeur   = sanitize_textarea_field( $_POST['voorkeur'] ?? '' );
+
+        if ( ! $naam || ! $email || ! $week_start ) {
+            wp_send_json_error( array( 'message' => 'Naam, e-mail en week zijn verplicht.' ) );
+        }
+
+        $dagen = json_decode( wp_unslash( $dagen_raw ), true ) ?: array();
+        $dagen_clean = array();
+        foreach ( $dagen as $dag => $tijden ) {
+            if ( ! empty( $tijden['van'] ) && ! empty( $tijden['tot'] ) ) {
+                $dagen_clean[ sanitize_key($dag) ] = array(
+                    'van' => substr( preg_replace('/[^0-9:]/', '', $tijden['van'] ), 0, 5 ),
+                    'tot' => substr( preg_replace('/[^0-9:]/', '', $tijden['tot'] ), 0, 5 ),
+                );
+            }
+        }
+
+        $data = array(
+            'naam'         => $naam,
+            'email'        => $email,
+            'telefoon'     => $telefoon,
+            'week_start'   => $week_start,
+            'dagen'        => $dagen_clean,
+            'vaardigheden' => array(),
+            'voorkeur'     => $voorkeur,
+        );
+
+        if ( $id > 0 ) {
+            PSP_DB::update_beschikbaarheid( $id, $data );
+            wp_send_json_success( array( 'message' => 'Beschikbaarheid bijgewerkt.' ) );
+        } else {
+            $new_id = PSP_DB::insert_beschikbaarheid( $data );
+            $new_id ? wp_send_json_success( array( 'message' => 'Beschikbaarheid toegevoegd.', 'id' => $new_id ) )
+                    : wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
+        }
     }
 
     /* ─────────────── AJAX: beschikbaarheid verwijderen ─────────────── */

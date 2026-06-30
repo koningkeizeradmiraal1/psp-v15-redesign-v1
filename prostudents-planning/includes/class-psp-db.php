@@ -272,6 +272,23 @@ class PSP_DB {
         $wpdb->delete( PSP_TABLE_BESCHIKBAARHEID, array( 'id'                => $id ) );
     }
 
+    public static function update_beschikbaarheid( $id, $data ) {
+        global $wpdb;
+        return $wpdb->update(
+            PSP_TABLE_BESCHIKBAARHEID,
+            array(
+                'naam'         => sanitize_text_field( $data['naam'] ),
+                'email'        => sanitize_email( $data['email'] ),
+                'telefoon'     => sanitize_text_field( isset( $data['telefoon'] ) ? $data['telefoon'] : '' ),
+                'week_start'   => $data['week_start'],
+                'dagen'        => wp_json_encode( $data['dagen'] ),
+                'vaardigheden' => wp_json_encode( isset( $data['vaardigheden'] ) ? $data['vaardigheden'] : array() ),
+                'voorkeur'     => sanitize_textarea_field( isset( $data['voorkeur'] ) ? $data['voorkeur'] : '' ),
+            ),
+            array( 'id' => (int) $id )
+        );
+    }
+
     /* ══════ Tarieven (eerste keer) ══════ */
 
     public static function is_eerste_keer( $email, $opdrachtgever ) {

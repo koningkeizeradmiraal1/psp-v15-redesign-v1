@@ -48,6 +48,7 @@
     initTabs();
     initWeekNav();
     initDienstModal();
+    initBeschikbaarheidModal();
     initFilter();
     initTariefModal();
     loadWeek();
@@ -614,7 +615,10 @@
       });
       html += '<td>' + (s.vaardigheden && s.vaardigheden.length ? renderVaardigheden(s.vaardigheden) : '—') + '</td>' +
         '<td><small>' + esc(s.voorkeur || '—') + '</small></td>' +
-        '<td><button class="psp-tbl-del" data-id="' + s.id + '" data-naam="' + esc(s.naam) + '">🗑</button></td></tr>';
+        '<td style="display:flex;gap:4px">' +
+        '<button class="psp-besch-edit-btn psp-tbl-action" data-id="' + s.id + '" title="Bewerken">✎</button>' +
+        '<button class="psp-tbl-del" data-id="' + s.id + '" data-naam="' + esc(s.naam) + '">🗑</button>' +
+        '</td></tr>';
     });
     html += '</tbody></table>';
     wrap.innerHTML = '<div class="psp-panel-body">' + html + '</div>';
@@ -623,6 +627,147 @@
         if (!confirm('Verwijder beschikbaarheid van ' + btn.dataset.naam + '?')) return;
         ajax('psp_delete_beschikbaarheid', { beschikbaarheid_id: btn.dataset.id }, function () { toast('Verwijderd.', 'success'); loadWeek(); });
       });
+    });
+    wrap.querySelectorAll('.psp-besch-edit-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var s = state.data.beschikbaarheid.find(function (x) { return x.id === parseInt(btn.dataset.id); });
+        if (s) openBeschikbaarheidModal(s);
+      });
+    });
+  }
+
+  /* ════ Beschikbaarheid modal (medewerker) ════ */
+  var _beschStudenten = [];
+
+  function initBeschikbaarheidModal() {
+    var addBtn = document.getElementById('psp-beschikbaar-toevoegen-btn');
+    if (addBtn) addBtn.addEventListener('click', function () { openBeschikbaarheidModal(null); });
+
+    document.querySelectorAll('.psp-besch-dag-check').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var dag = cb.dataset.dag;
+        var van = document.querySelector('.psp-besch-van[data-dag="' + dag + '"]');
+        var tot = document.querySelector('.psp-besch-tot[data-dag="' + dag + '"]');
+        if (van) { van.disabled = !cb.checked; van.style.opacity = cb.checked ? '1' : '.4'; }
+        if (tot) { tot.disabled = !cb.checked; tot.style.opacity = cb.checked ? '1' : '.4'; }
+      });
+    });
+
+    var sel = document.getElementById('psp-besch-student-select');
+    if (sel) sel.addEventListener('change', function () {
+      var val = sel.value;
+      var hw = document.getElementById('psp-besch-handmatig-wrap');
+      if (val === '__handmatig__') {
+        hw.style.display = '';
+        document.getElementById('psp-besch-naam').value = '';
+        document.getElementById('psp-besch-email').value = '';
+      } else if (val) {
+        hw.style.display = 'none';
+        var st = _beschStudenten.find(function (x) { return x.email === val; });
+        if (st) {
+          document.getElementById('psp-besch-naam').value  = st.naam;
+          document.getElementById('psp-besch-email').value = st.email;
+        }
+      } else {
+        hw.style.display = 'none';
+      }
+    });
+
+    var opslaanBtn = document.getElementById('psp-besch-opslaan-btn');
+    if (opslaanBtn) opslaanBtn.addEventListener('click', saveBeschikbaarheid);
+  }
+
+  function openBeschikbaarheidModal(student) {
+    var modal = document.getElementById('psp-beschikbaar-modal');
+    if (!modal) return;
+
+    document.getElementById('psp-beschikbaar-modal-titel').textContent =
+      student ? 'Beschikbaarheid bewerken' : 'Beschikbaarheid toevoegen';
+    document.getElementById('psp-besch-id').value      = student ? student.id : 0;
+    document.getElementById('psp-besch-week').value    = student ? student.week_start : fmt(state.week);
+    document.getElementById('psp-besch-telefoon').value = student ? (student.telefoon || '') : '';
+    document.getElementById('psp-besch-voorkeur').value = student ? (student.voorkeur || '') : '';
+
+    var sel = document.getElementById('psp-besch-student-select');
+    var hw  = document.getElementById('psp-besch-handmatig-wrap');
+
+    function vullDropdown(studenten) {
+      _beschStudenten = studenten;
+      var opties = '<option value="">— Selecteer student —</option>';
+      studenten.forEach(function (s) {
+        var selected = student && s.email === student.email ? ' selected' : '';
+        opties += '<option value="' + esc(s.email) + '"' + selected + '>' + esc(s.naam) + ' (' + esc(s.email) + ')</option>';
+      });
+      opties += '<option value="__handmatig__">+ Handmatig invullen</option>';
+      sel.innerHTML = opties;
+    }
+
+    hw.style.display = 'none';
+    document.getElementById('psp-besch-naam').value  = student ? (student.naam  || '') : '';
+    document.getElementById('psp-besch-email').value = student ? (student.email || '') : '';
+
+    if (_beschStudenten.length) {
+      vullDropdown(_beschStudenten);
+    } else {
+      ajax('psp_get_studenten', {}, function (res) { vullDropdown(res); });
+    }
+
+    DAG_KEYS.forEach(function (dk) {
+      var cb  = document.querySelector('.psp-besch-dag-check[data-dag="' + dk + '"]');
+      var van = document.querySelector('.psp-besch-van[data-dag="' + dk + '"]');
+      var tot = document.querySelector('.psp-besch-tot[data-dag="' + dk + '"]');
+      if (!cb) return;
+      var dag = student && student.dagen ? student.dagen[dk] : null;
+      cb.checked = !!dag;
+      if (van) { van.value = dag ? dag.van : '08:00'; van.disabled = !dag; van.style.opacity = dag ? '1' : '.4'; }
+      if (tot) { tot.value = dag ? dag.tot : '17:00'; tot.disabled = !dag; tot.style.opacity = dag ? '1' : '.4'; }
+    });
+
+    modal.style.display = 'flex';
+  }
+
+  function saveBeschikbaarheid() {
+    var id    = document.getElementById('psp-besch-id').value;
+    var selVal = document.getElementById('psp-besch-student-select').value;
+    var naam, email;
+
+    if (selVal && selVal !== '__handmatig__') {
+      var st = _beschStudenten.find(function (x) { return x.email === selVal; });
+      naam  = st ? st.naam : '';
+      email = selVal;
+    } else {
+      naam  = document.getElementById('psp-besch-naam').value.trim();
+      email = document.getElementById('psp-besch-email').value.trim();
+    }
+
+    var weekStart = document.getElementById('psp-besch-week').value;
+    if (!naam || !email || !weekStart) { toast('Naam, e-mail en week zijn verplicht.', 'error'); return; }
+
+    var dagen = {};
+    DAG_KEYS.forEach(function (dk) {
+      var cb  = document.querySelector('.psp-besch-dag-check[data-dag="' + dk + '"]');
+      var van = document.querySelector('.psp-besch-van[data-dag="' + dk + '"]');
+      var tot = document.querySelector('.psp-besch-tot[data-dag="' + dk + '"]');
+      if (cb && cb.checked && van && tot) dagen[dk] = { van: van.value, tot: tot.value };
+    });
+
+    var btn = document.getElementById('psp-besch-opslaan-btn');
+    btn.disabled = true; btn.textContent = 'Bezig…';
+
+    ajax('psp_save_beschikbaarheid_admin', {
+      id: id, naam: naam, email: email,
+      telefoon:   document.getElementById('psp-besch-telefoon').value.trim(),
+      week_start: weekStart,
+      dagen:      JSON.stringify(dagen),
+      voorkeur:   document.getElementById('psp-besch-voorkeur').value.trim(),
+    }, function (res) {
+      btn.disabled = false; btn.textContent = 'Opslaan';
+      document.getElementById('psp-beschikbaar-modal').style.display = 'none';
+      toast(res && res.message ? res.message : 'Opgeslagen.', 'success');
+      loadWeek();
+    }, function (err) {
+      btn.disabled = false; btn.textContent = 'Opslaan';
+      toast((err && err.message) ? err.message : 'Fout bij opslaan.', 'error');
     });
   }
 
