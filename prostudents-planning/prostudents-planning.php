@@ -35,6 +35,11 @@ function psp_register_rollen() {
             'psp_student' => true,
         ]);
     }
+    if ( ! get_role('psp_aanvraag') ) {
+        add_role('psp_aanvraag', 'PSP Aanvraag', [
+            'read' => true,
+        ]);
+    }
 }
 // Zorg ook dat de rol altijd beschikbaar is na heractivatie
 add_action('init', 'psp_register_rollen');
@@ -65,6 +70,15 @@ function psp_create_pages() {
             'post_status'  => 'publish',
             'post_type'    => 'page',
             'post_content' => '[psp_dashboard]',
+        ) );
+    }
+    if ( ! get_page_by_path('aanmelden') ) {
+        wp_insert_post( array(
+            'post_title'   => 'Aanmelden als uitzendkracht',
+            'post_name'    => 'aanmelden',
+            'post_status'  => 'publish',
+            'post_type'    => 'page',
+            'post_content' => '[psp_registreer]',
         ) );
     }
 }

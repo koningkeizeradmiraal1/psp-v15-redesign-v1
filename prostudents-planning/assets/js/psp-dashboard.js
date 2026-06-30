@@ -919,14 +919,16 @@
         document.querySelectorAll('.psp-stab-panel').forEach(function (p) { p.style.display = 'none'; });
         var panel = document.getElementById('psp-stab-' + btn.dataset.stab);
         if (panel) panel.style.display = '';
-        if (btn.dataset.stab === 'tarieven')  laadTarievenTodo();
-        if (btn.dataset.stab === 'studenten') laadStudentenTab();
+        if (btn.dataset.stab === 'tarieven')       laadTarievenTodo();
+        if (btn.dataset.stab === 'aanmeldingen')   laadAanmeldingen();
+        if (btn.dataset.stab === 'studenten')      laadStudentenTab();
         if (btn.dataset.stab === 'werkbevestiging') initWbTab();
-        if (btn.dataset.stab === 'bevestigingen') laadWbBevestigingen();
+        if (btn.dataset.stab === 'bevestigingen')  laadWbBevestigingen();
       });
     });
 
     laadTarievenTodo();
+    laadAanmeldingenBadge();
   }
 
   function laadTarievenBadge() {
@@ -1472,5 +1474,78 @@
     });
   }
 
+
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+     AANMELDINGEN (Beheer subtab)
+  \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+
+  function laadAanmeldingenBadge() {
+    ajax('psp_get_aanmeldingen', {}, function (data) {
+      var n = Array.isArray(data) ? data.length : 0;
+      var badge = document.getElementById('psp-aanmeldingen-badge');
+      if (badge) { badge.textContent = n; badge.style.display = n ? '' : 'none'; }
+    });
+  }
+
+  function laadAanmeldingen() {
+    var el = document.getElementById('psp-aanmeldingen-lijst');
+    if (!el) return;
+    el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
+    ajax('psp_get_aanmeldingen', {}, function (data) {
+      if (!Array.isArray(data) || !data.length) {
+        el.innerHTML = '<p class="psp-empty-msg">Geen nieuwe aanmeldingen.</p>';
+        laadAanmeldingenBadge();
+        return;
+      }
+      var html = '<table class="psp-table"><thead><tr>'
+        + '<th>Naam</th><th>E-mail</th><th>Telefoon</th><th>Datum</th><th style="width:190px">Actie</th>'
+        + '</tr></thead><tbody>';
+      data.forEach(function (r) {
+        html += '<tr data-uid="' + r.user_id + '">'
+          + '<td><strong>' + esc(r.naam) + '</strong></td>'
+          + '<td>' + esc(r.email) + '</td>'
+          + '<td>' + esc(r.telefoon || '\u2014') + '</td>'
+          + '<td>' + esc(r.datum) + '</td>'
+          + '<td style="display:flex;gap:6px">'
+          + '<button class="psp-btn-primary psp-btn-sm psp-aanm-goed" data-uid="' + r.user_id + '" data-naam="' + esc(r.naam) + '">\u2713 Goedkeuren</button>'
+          + '<button class="psp-tbl-del psp-aanm-af" data-uid="' + r.user_id + '" data-naam="' + esc(r.naam) + '" title="Afwijzen">\u2717</button>'
+          + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+
+      el.querySelectorAll('.psp-aanm-goed').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Account van ' + btn.dataset.naam + ' goedkeuren en welkomstmail sturen?')) return;
+          btn.disabled = true; btn.textContent = '\u2026';
+          ajax('psp_goedkeur_aanmelding', { user_id: btn.dataset.uid }, function (res) {
+            toast(res.message || '\u2713 Goedgekeurd.', 'success');
+            laadAanmeldingen();
+          }, function (msg) {
+            toast(msg || 'Mislukt.', 'error');
+            btn.disabled = false; btn.textContent = '\u2713 Goedkeuren';
+          });
+        });
+      });
+
+      el.querySelectorAll('.psp-aanm-af').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Aanmelding van ' + btn.dataset.naam + ' afwijzen en account verwijderen?')) return;
+          btn.disabled = true;
+          ajax('psp_wijs_af_aanmelding', { user_id: btn.dataset.uid }, function (res) {
+            toast(res.message || 'Afgewezen.', 'success');
+            laadAanmeldingen();
+          }, function (msg) {
+            toast(msg || 'Mislukt.', 'error');
+            btn.disabled = false;
+          });
+        });
+      });
+
+      laadAanmeldingenBadge();
+    }, function () {
+      el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
+    });
+  }
 
 })();

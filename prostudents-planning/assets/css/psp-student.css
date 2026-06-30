@@ -207,3 +207,39 @@
   .psp-dm-label { min-width: 110px; font-size: .82rem; }
   .psp-dm-rij   { font-size: .82rem; }
 }
+
+/* ─── Aanvraag in behandeling ─── */
+.psp-aanvraag-pending {
+  max-width: 480px;
+  margin: 60px auto;
+  padding: 40px 32px;
+  background: #fff;
+  border: 2px solid var(--psp-pink-lt);
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(211,23,117,.07);
+}
+.psp-aanvraag-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+.psp-aanvraag-pending h3 {
+  font-size: 1.3rem;
+  color: var(--psp-pink);
+  margin: 0 0 12px;
+}
+.psp-aanvraag-pending p {
+  font-size: .95rem;
+  color: #555;
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+.psp-aanvraag-contact {
+  font-size: .85rem !important;
+  color: #999 !important;
+}
+.psp-aanvraag-contact a {
+  color: var(--psp-pink);
+  text-decoration: none;
+}
+.psp-aanvraag-contact a:hover { text-decoration: underline; }

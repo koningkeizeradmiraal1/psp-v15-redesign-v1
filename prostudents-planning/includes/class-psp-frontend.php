@@ -21,6 +21,10 @@ class PSP_Frontend {
         add_shortcode('ps_beschikbaarheid', [self::class, 'shortcode']);
         add_action('wp_ajax_nopriv_psp_submit_beschikbaarheid', [self::class, 'ajax_submit']);
         add_action('wp_ajax_psp_submit_beschikbaarheid',        [self::class, 'ajax_submit']);
+
+        add_shortcode('psp_registreer', [self::class, 'shortcode_registreer']);
+        add_action('wp_ajax_nopriv_psp_registreer_aanmelding', [self::class, 'ajax_registreer']);
+        add_action('wp_ajax_psp_registreer_aanmelding',        [self::class, 'ajax_registreer']);
     }
 
     public static function shortcode(): string {
@@ -147,6 +151,168 @@ class PSP_Frontend {
         return ob_get_clean();
     }
 
+    /* ─────────────── Shortcode: aanmeldformulier ─────────────── */
+    public static function shortcode_registreer(): string {
+        if ( is_user_logged_in() ) {
+            return '<div class="psp-form-wrap"><p class="psp-form-intro">Je bent al ingelogd. '
+                 . '<a href="' . esc_url( home_url('/mijn-rooster/') ) . '">Ga naar je rooster &rarr;</a></p></div>';
+        }
+        $ajax_url = admin_url('admin-ajax.php');
+        ob_start(); ?>
+        <div class="psp-form-wrap" id="psp-registreer">
+            <h2 class="psp-form-title">Aanmelden als uitzendkracht</h2>
+            <p class="psp-form-intro">Maak een account aan bij ProStudents Planning. Na goedkeuring ontvang je een e-mail en kun je inloggen.</p>
+
+            <form id="psp-reg-form" novalidate>
+                <?php wp_nonce_field('psp_registreer', 'psp_reg_nonce'); ?>
+
+                <div class="psp-row psp-row-2">
+                    <div class="psp-field">
+                        <label for="psp-reg-voornaam">Voornaam *</label>
+                        <input type="text" id="psp-reg-voornaam" name="voornaam" required placeholder="Jan">
+                    </div>
+                    <div class="psp-field">
+                        <label for="psp-reg-achternaam">Achternaam *</label>
+                        <input type="text" id="psp-reg-achternaam" name="achternaam" required placeholder="de Vries">
+                    </div>
+                </div>
+
+                <div class="psp-row psp-row-2">
+                    <div class="psp-field">
+                        <label for="psp-reg-email">E-mailadres *</label>
+                        <input type="email" id="psp-reg-email" name="email" required placeholder="jan@email.nl">
+                    </div>
+                    <div class="psp-field">
+                        <label for="psp-reg-telefoon">Telefoonnummer</label>
+                        <input type="tel" id="psp-reg-telefoon" name="telefoon" placeholder="06-12345678">
+                    </div>
+                </div>
+
+                <div class="psp-row psp-row-2">
+                    <div class="psp-field">
+                        <label for="psp-reg-ww">Wachtwoord *</label>
+                        <input type="password" id="psp-reg-ww" name="wachtwoord" required placeholder="Minimaal 8 tekens">
+                    </div>
+                    <div class="psp-field">
+                        <label for="psp-reg-ww2">Wachtwoord herhalen *</label>
+                        <input type="password" id="psp-reg-ww2" name="wachtwoord2" required placeholder="Herhaal wachtwoord">
+                    </div>
+                </div>
+
+                <div id="psp-reg-error" class="psp-notice psp-notice-error" style="display:none"></div>
+
+                <button type="submit" class="psp-btn" id="psp-reg-submit">
+                    <span class="psp-btn-text">Aanmelden</span>
+                    <span class="psp-btn-loading" style="display:none">Bezig&hellip;</span>
+                </button>
+
+                <p style="margin-top:14px;font-size:.85rem;color:#888">
+                    Al een account? <a href="<?php echo esc_url( wp_login_url( home_url('/mijn-rooster/') ) ); ?>">Inloggen &rarr;</a>
+                </p>
+            </form>
+
+            <div id="psp-reg-succes" class="psp-notice psp-notice-success" style="display:none">
+                <strong>&#10003; Aanmelding ontvangen!</strong> Je account wordt beoordeeld. Je ontvangt een e-mail zodra je toegang hebt.
+            </div>
+        </div>
+        <script>
+        (function(){
+            var form    = document.getElementById('psp-reg-form');
+            var errorEl = document.getElementById('psp-reg-error');
+            var succEl  = document.getElementById('psp-reg-succes');
+            if (!form) return;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                errorEl.style.display = 'none';
+                var btn  = document.getElementById('psp-reg-submit');
+                var ww   = document.getElementById('psp-reg-ww').value;
+                var ww2  = document.getElementById('psp-reg-ww2').value;
+                if (ww !== ww2) { errorEl.textContent = 'Wachtwoorden komen niet overeen.'; errorEl.style.display=''; return; }
+                if (ww.length < 8) { errorEl.textContent = 'Wachtwoord moet minimaal 8 tekens bevatten.'; errorEl.style.display=''; return; }
+                btn.disabled = true;
+                btn.querySelector('.psp-btn-text').style.display    = 'none';
+                btn.querySelector('.psp-btn-loading').style.display = '';
+                var fd = new FormData(form);
+                fd.append('action', 'psp_registreer_aanmelding');
+                fetch(<?php echo json_encode( $ajax_url ); ?>, { method:'POST', body:fd })
+                    .then(function(r){ return r.json(); })
+                    .then(function(res){
+                        if (res.success) {
+                            form.style.display = 'none';
+                            succEl.style.display = '';
+                        } else {
+                            errorEl.textContent = (res.data && res.data.message) ? res.data.message : 'Er ging iets mis.';
+                            errorEl.style.display = '';
+                            btn.disabled = false;
+                            btn.querySelector('.psp-btn-text').style.display    = '';
+                            btn.querySelector('.psp-btn-loading').style.display = 'none';
+                        }
+                    })
+                    .catch(function(){
+                        errorEl.textContent = 'Verbindingsfout. Probeer opnieuw.';
+                        errorEl.style.display = '';
+                        btn.disabled = false;
+                        btn.querySelector('.psp-btn-text').style.display    = '';
+                        btn.querySelector('.psp-btn-loading').style.display = 'none';
+                    });
+            });
+        })();
+        </script>
+        <?php
+        return ob_get_clean();
+    }
+
+    /* ─────────────── AJAX: aanmelding verwerken ─────────────── */
+    public static function ajax_registreer(): void {
+        check_ajax_referer('psp_registreer', 'psp_reg_nonce');
+
+        $voornaam   = sanitize_text_field( $_POST['voornaam']   ?? '' );
+        $achternaam = sanitize_text_field( $_POST['achternaam'] ?? '' );
+        $email      = sanitize_email(      $_POST['email']      ?? '' );
+        $telefoon   = sanitize_text_field( $_POST['telefoon']   ?? '' );
+        $wachtwoord = $_POST['wachtwoord'] ?? '';
+
+        if ( ! $voornaam || ! $achternaam || ! is_email($email) || strlen($wachtwoord) < 8 ) {
+            wp_send_json_error( ['message' => 'Vul alle verplichte velden in (wachtwoord minimaal 8 tekens).'] );
+        }
+        if ( email_exists($email) ) {
+            wp_send_json_error( ['message' => 'Dit e-mailadres is al geregistreerd.'] );
+        }
+
+        $naam  = $voornaam . ' ' . $achternaam;
+        $basis = sanitize_user( strtolower( $voornaam . '.' . $achternaam ), true );
+        $basis = preg_replace('/[^a-z0-9._-]/', '', $basis) ?: 'student';
+        $login = $basis; $i = 1;
+        while ( username_exists($login) ) { $login = $basis . $i++; }
+
+        // Alle WP-mails uitschakelen
+        add_filter( 'wp_new_user_notification_email',       '__return_false' );
+        add_filter( 'wp_new_user_notification_email_admin', '__return_false' );
+        remove_all_actions( 'user_register' );
+
+        $user_id = wp_insert_user( [
+            'user_login'   => $login,
+            'user_email'   => $email,
+            'user_pass'    => $wachtwoord,
+            'display_name' => $naam,
+            'first_name'   => $voornaam,
+            'last_name'    => $achternaam,
+            'role'         => 'psp_aanvraag',
+        ] );
+
+        if ( is_wp_error($user_id) ) {
+            wp_send_json_error( ['message' => 'Account aanmaken mislukt: ' . $user_id->get_error_message()] );
+        }
+
+        update_user_meta( $user_id, 'psp_status',   'aanvraag' );
+        update_user_meta( $user_id, 'psp_telefoon', $telefoon );
+
+        PSP_Mail::stuur_aanmelding_notificatie( $user_id, $naam, $email );
+
+        wp_send_json_success( ['message' => 'Aanmelding ontvangen!'] );
+    }
+
+    /* ─────────────── AJAX: beschikbaarheid indienen ─────────────── */
     public static function ajax_submit(): void {
         check_ajax_referer('psp_frontend', 'psp_nonce');
 

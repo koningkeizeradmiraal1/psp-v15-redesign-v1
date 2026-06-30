@@ -15,6 +15,20 @@ class PSP_Student {
                  . '<a href="' . esc_url( wp_login_url( get_permalink() ) ) . '" class="psp-rooster-btn">Inloggen</a></div>';
         }
 
+        // Aanvraag nog in behandeling?
+        $psp_status = get_user_meta( get_current_user_id(), 'psp_status', true );
+        if ( $psp_status === 'aanvraag' ) {
+            return '<div class="psp-rooster-wrap">'
+                 . '<div class="psp-aanvraag-pending">'
+                 . '<div class="psp-aanvraag-icon">&#9203;</div>'
+                 . '<h3>Aanmelding in behandeling</h3>'
+                 . '<p>Je aanmelding is ontvangen en wordt zo snel mogelijk beoordeeld door ProStudents.<br>'
+                 . 'Je ontvangt een e-mail zodra je toegang hebt.</p>'
+                 . '<p class="psp-aanvraag-contact">Vragen? Bel <a href="tel:0503112322">050&nbsp;&ndash;&nbsp;311&nbsp;23&nbsp;22</a> '
+                 . 'of mail <a href="mailto:info@prostudents.nl">info@prostudents.nl</a>.</p>'
+                 . '</div></div>';
+        }
+
         $user  = wp_get_current_user();
         $email = $user->user_email;
 

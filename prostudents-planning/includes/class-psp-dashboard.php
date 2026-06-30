@@ -12,6 +12,9 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_ontkoppel',          [self::class, 'ajax_ontkoppel']);
         add_action('wp_ajax_psp_delete_beschikbaarheid',        [self::class, 'ajax_delete_beschikbaarheid']);
         add_action('wp_ajax_psp_save_beschikbaarheid_admin',    [self::class, 'ajax_save_beschikbaarheid_admin']);
+        add_action('wp_ajax_psp_get_aanmeldingen',              [self::class, 'ajax_get_aanmeldingen']);
+        add_action('wp_ajax_psp_goedkeur_aanmelding',           [self::class, 'ajax_goedkeur_aanmelding']);
+        add_action('wp_ajax_psp_wijs_af_aanmelding',            [self::class, 'ajax_wijs_af_aanmelding']);
         add_action('wp_ajax_psp_save_tarief',            [self::class, 'ajax_save_tarief']);
         add_action('wp_ajax_psp_tarieven_todo',          [self::class, 'ajax_tarieven_todo']);
         add_action('wp_ajax_psp_get_studenten',          [self::class, 'ajax_get_studenten']);
@@ -211,6 +214,7 @@ class PSP_Dashboard {
   <div id="psp-tab-beheer" class="psp-tab-panel" style="display:none">
     <div class="psp-beheer-subtabs">
       <button class="psp-stab active" data-stab="tarieven">&#128466; Tarieven flexexpert</button>
+      <button class="psp-stab" data-stab="aanmeldingen">&#128221; Aanmeldingen <span id="psp-aanmeldingen-badge" style="display:none;background:#d31775;color:#fff;border-radius:10px;font-size:.65rem;font-weight:700;padding:1px 6px;margin-left:2px;vertical-align:middle"></span></button>
       <button class="psp-stab" data-stab="studenten">&#128101; Student accounts</button>
       <button class="psp-stab" data-stab="werkbevestiging">&#128196; Werkbevestiging</button>
       <button class="psp-stab" data-stab="bevestigingen">&#10003; Bevestigingen</button>
@@ -223,6 +227,16 @@ class PSP_Dashboard {
           Eerste-keer koppelingen waarvoor het uurtarief en loon nog niet zijn doorgegeven aan flexexpert.
         </p>
         <div id="psp-tarieven-todo-lijst"><p class="psp-empty-msg">Laden&#8230;</p></div>
+      </div>
+    </div>
+
+    <!-- Subtab: Aanmeldingen -->
+    <div id="psp-stab-aanmeldingen" class="psp-stab-panel" style="display:none">
+      <div class="psp-panel-body">
+        <p style="color:#666;font-size:.87rem;margin:0 0 16px">
+          Nieuwe uitzendkrachten die zich hebben aangemeld via de website. Keur goed of wijs af.
+        </p>
+        <div id="psp-aanmeldingen-lijst"><p class="psp-empty-msg">Laden&#8230;</p></div>
       </div>
     </div>
 
@@ -901,6 +915,64 @@ class PSP_Dashboard {
             'mail_ok' => $mail_ok,
             'message' => $mail_ok ? '\u2713 Werkbevestiging verstuurd.' : '\u2713 Opgeslagen (e-mail mislukt â controleer mailconfiguratie).',
         ) );
+    }
+
+    /* ─────────────── AJAX: aanmeldingen ophalen ─────────────── */
+    public static function ajax_get_aanmeldingen() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $users = get_users( [
+            'role'    => 'psp_aanvraag',
+            'orderby' => 'registered',
+            'order'   => 'DESC',
+        ] );
+
+        $out = [];
+        foreach ( $users as $u ) {
+            if ( get_user_meta( $u->ID, 'psp_status', true ) !== 'aanvraag' ) continue;
+            $out[] = [
+                'user_id'  => $u->ID,
+                'naam'     => $u->display_name,
+                'email'    => $u->user_email,
+                'telefoon' => get_user_meta( $u->ID, 'psp_telefoon', true ),
+                'datum'    => substr( $u->user_registered, 0, 10 ),
+            ];
+        }
+        wp_send_json_success( $out );
+    }
+
+    /* ─────────────── AJAX: aanmelding goedkeuren ─────────────── */
+    public static function ajax_goedkeur_aanmelding() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id ) wp_send_json_error( ['message' => 'Geen gebruiker opgegeven.'] );
+
+        $user = get_user_by( 'id', $user_id );
+        if ( ! $user ) wp_send_json_error( ['message' => 'Gebruiker niet gevonden.'] );
+
+        $user->set_role('psp_student');
+        update_user_meta( $user_id, 'psp_status', 'goedgekeurd' );
+
+        PSP_Mail::stuur_welkomstmail( $user_id );
+
+        wp_send_json_success( ['message' => "✓ Account goedgekeurd en welkomstmail verstuurd."] );
+    }
+
+    /* ─────────────── AJAX: aanmelding afwijzen ─────────────── */
+    public static function ajax_wijs_af_aanmelding() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id ) wp_send_json_error( ['message' => 'Geen gebruiker opgegeven.'] );
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        wp_delete_user( $user_id );
+
+        wp_send_json_success( ['message' => 'Aanmelding afgewezen en account verwijderd.'] );
     }
 
     /* ─────────────── AJAX: bevestigingen overzicht voor recruiter ─────────────── */
