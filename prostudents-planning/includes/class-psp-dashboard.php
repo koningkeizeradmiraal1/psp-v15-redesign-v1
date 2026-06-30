@@ -103,7 +103,7 @@ class PSP_Dashboard {
   <!-- TAB: Studenten -->
   <div id="psp-tab-studenten" class="psp-tab-panel" style="display:none">
     <div class="psp-panel-header">
-      <h3>Ingediende beschikbaarheid!</h3>
+      <h3>Ingediende beschikbaarheid</h3>
       <button class="psp-btn-primary psp-btn-sm" id="psp-beschikbaar-toevoegen-btn">+ Toevoegen</button>
     </div>
     <div id="psp-studenten-tabel-wrap"><p class="psp-empty-msg">Laden…</p></div>
