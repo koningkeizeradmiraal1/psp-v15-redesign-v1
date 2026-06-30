@@ -1,0 +1,221 @@
+/* ProStudents Planning — Frontend Form */
+:root {
+  --psp-pink:   #d31775;
+  --psp-gray:   #4b494a;
+  --psp-border: #e0e0e0;
+  --psp-radius: 8px;
+}
+
+/* Wrapper */
+.psp-form-wrap {
+  max-width: 680px;
+  margin: 32px auto;
+  padding: 0 16px;
+  font-family: inherit;
+  color: var(--psp-gray);
+}
+.psp-form-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--psp-gray);
+  margin-bottom: 6px;
+}
+.psp-form-intro {
+  color: #777;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+/* Form rows */
+.psp-row { display: flex; gap: 16px; }
+.psp-row-2 > .psp-field { flex: 1; }
+
+/* Field */
+.psp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 16px;
+}
+.psp-field label {
+  font-size: .875rem;
+  font-weight: 600;
+}
+.psp-field-hint {
+  font-size: .8rem;
+  color: #999;
+  margin: 0 0 8px;
+}
+.psp-field input[type="text"],
+.psp-field input[type="email"],
+.psp-field input[type="tel"],
+.psp-field select,
+.psp-field textarea {
+  border: 1px solid var(--psp-border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: .9375rem;
+  color: var(--psp-gray);
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  transition: border-color .2s, box-shadow .2s;
+}
+.psp-field input:focus,
+.psp-field select:focus,
+.psp-field textarea:focus {
+  outline: none;
+  border-color: var(--psp-pink);
+  box-shadow: 0 0 0 3px rgba(211,23,117,.10);
+}
+
+/* Days grid */
+.psp-dag-header,
+.psp-dag-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 120px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+}
+.psp-dag-header {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #aaa;
+  border-bottom: 1px solid var(--psp-border);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+}
+.psp-dag-row {
+  border-bottom: 1px solid #f5f5f5;
+  transition: background .15s;
+}
+.psp-dag-row.psp-dag-actief {
+  background: #fff8fc;
+}
+.psp-dag-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: .9375rem;
+  font-weight: 500;
+}
+.psp-dag-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--psp-pink);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.psp-time {
+  border: 1px solid var(--psp-border);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: .875rem;
+  color: var(--psp-gray);
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  transition: border-color .2s;
+}
+.psp-time:disabled {
+  background: #f5f5f5;
+  color: #bbb;
+  border-color: #eee;
+  cursor: not-allowed;
+}
+.psp-time:not(:disabled):focus {
+  outline: none;
+  border-color: var(--psp-pink);
+}
+
+/* Notices */
+.psp-notice {
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+.psp-notice-success {
+  background: #eafbf0;
+  border-left: 4px solid #27ae60;
+  color: #1a6b3a;
+}
+.psp-notice-error {
+  background: #fff0f4;
+  border-left: 4px solid var(--psp-pink);
+  color: #a0124d;
+}
+
+/* Submit button */
+.psp-btn {
+  display: inline-block;
+  background: var(--psp-pink);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 13px 32px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, transform .1s;
+  margin-top: 8px;
+}
+.psp-btn:hover:not(:disabled) { background: #b8116b; }
+.psp-btn:active { transform: scale(.98); }
+.psp-btn:disabled { background: #e0a0c0; cursor: not-allowed; }
+
+/* Responsive */
+@media (max-width: 540px) {
+  .psp-row { flex-direction: column; gap: 0; }
+  .psp-dag-header,
+  .psp-dag-row { grid-template-columns: 1fr 90px 90px; gap: 6px; }
+}
+
+/* ── Vaardigheden checkboxes ── */
+.psp-vaardigheden {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+.psp-vaardigheid-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border: 1px solid var(--psp-border);
+  border-radius: 6px;
+  font-size: .9rem;
+  font-weight: 500;
+  transition: border-color .2s, background .2s;
+  background: #fff;
+  user-select: none;
+}
+.psp-vaardigheid-check:hover {
+  border-color: var(--psp-pink);
+  background: #fff8fc;
+}
+.psp-vaardigheid-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--psp-pink);
+  flex-shrink: 0;
+}
+.psp-vaardigheid-check:has(input:checked) {
+  border-color: var(--psp-pink);
+  background: #fce8f2;
+  color: var(--psp-pink);
+}
+
+/* PSP v1.5 — student: readonly velden */
+.psp-field-readonly {
+  background: #f3f4f6 !important;
+  color: #555 !important;
+  cursor: not-allowed !important;
+  border-color: #d1d5db !important;
+}

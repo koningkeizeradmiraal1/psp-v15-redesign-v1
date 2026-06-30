@@ -1,0 +1,209 @@
+/* PSP — Mijn Rooster (student portal)
+   Redesign: blauw → roze, modern look */
+
+:root {
+  --psp-pink:      #d31775;
+  --psp-pink-dark: #b8116b;
+  --psp-pink-lt:   #fce8f2;
+  --psp-pink-mlt:  #fff0f7;
+  --psp-green:     #27ae60;
+  --psp-green-lt:  #e8f8f0;
+  --psp-border:    #e8e8e8;
+  --psp-gray:      #4b494a;
+}
+
+.psp-rooster-wrap {
+  max-width: 700px; margin: 0 auto; padding: 0 16px 48px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Header ── */
+.psp-rooster-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 22px 0 16px; border-bottom: 1px solid var(--psp-border); margin-bottom: 22px;
+}
+.psp-rooster-welkom { margin: 0; color: #555; font-size: .95rem; }
+.psp-rooster-btn {
+  background: var(--psp-pink); color: #fff;
+  padding: 9px 18px; border-radius: 8px;
+  font-weight: 700; font-size: .88rem;
+  text-decoration: none; white-space: nowrap;
+  transition: background .15s; border: none; cursor: pointer;
+  display: inline-block;
+}
+.psp-rooster-btn:hover { background: var(--psp-pink-dark); color: #fff; }
+
+/* ── Tabs ── */
+.psp-rooster-tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+.psp-rtab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 8px 16px; font-size: .9rem; font-weight: 600; color: #bbb;
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.psp-rtab.active { color: var(--psp-pink); border-bottom-color: var(--psp-pink); }
+.psp-rtab:hover  { color: var(--psp-pink); }
+
+.psp-rooster-laden { color: #ccc; font-style: italic; padding: 20px 0; font-size: .9rem; }
+.psp-rooster-leeg  { color: #ccc; padding: 20px 0; font-size: .9rem; }
+
+/* ── Dienst-kaart ── */
+.psp-dienst-kaart {
+  background: #fff;
+  border: 1px solid var(--psp-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.03);
+  transition: box-shadow .15s, border-color .15s;
+}
+.psp-dienst-kaart:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+}
+.psp-dienst-datum { font-size: .78rem; color: #bbb; text-transform: capitalize; margin-bottom: 4px; font-weight: 500; }
+.psp-dienst-naam  { font-weight: 700; font-size: 1rem; color: #1a1a2e; margin: 0 0 6px; letter-spacing: -.01em; }
+.psp-dienst-meta  { display: flex; flex-wrap: wrap; gap: 6px; font-size: .82rem; color: #666; margin-top: 8px; }
+.psp-dienst-meta span {
+  background: #f4f4f6; border-radius: 6px; padding: 4px 9px;
+  font-size: .8rem; color: #555;
+}
+
+.psp-rooster-login { text-align: center; padding: 40px 20px; color: #888; }
+.psp-rooster-login .psp-rooster-btn { display: inline-block; margin-top: 12px; }
+
+@media (max-width: 480px) {
+  .psp-rooster-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+
+/* ═══ Werkbevestigingen ═══ */
+.psp-wb-sectie { margin: 20px 0; }
+
+.psp-wb-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--psp-pink-mlt);
+  border: 1.5px solid #f0a0cc;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.psp-wb-banner-icon { font-size: 1.5rem; flex-shrink: 0; }
+
+.psp-wb-kaart-student {
+  background: #fff;
+  border: 1.5px solid var(--psp-border);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  transition: box-shadow .15s;
+}
+.psp-wb-kaart-student:hover { box-shadow: 0 4px 16px rgba(211,23,117,.06); }
+.psp-wb-kaart-meta {
+  background: #fafafa;
+  border-bottom: 1px solid var(--psp-border);
+  padding: 10px 16px;
+  display: flex; gap: 16px; flex-wrap: wrap;
+  font-size: .84rem; color: #666;
+}
+.psp-wb-kaart-onderwerp {
+  padding: 8px 16px;
+  font-size: .85rem; color: #374151;
+  border-bottom: 1px solid #f5f5f5;
+  background: #fafafa;
+}
+.psp-wb-kaart-inhoud {
+  padding: 16px;
+  font-size: .87rem; line-height: 1.7;
+  color: #1e293b; max-height: 400px; overflow-y: auto;
+}
+.psp-wb-kaart-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--psp-border);
+  background: #fafafa;
+}
+.psp-wb-kaart-footer .psp-rooster-btn {
+  display: inline-block;
+  background: var(--psp-green); color: #fff;
+  border: none; border-radius: 8px;
+  padding: 8px 18px; font-size: .88rem; font-weight: 700; cursor: pointer;
+}
+.psp-wb-kaart-footer .psp-rooster-btn:hover { background: #1e8449; }
+
+/* ═══ Klikbare kaarten ═══ */
+.psp-kaart-klikbaar {
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s, border-color .12s;
+  position: relative;
+}
+.psp-kaart-klikbaar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(211,23,117,.10);
+  border-color: var(--psp-pink);
+}
+.psp-kaart-klik-hint {
+  font-size: .75rem; color: #ccc; margin-top: 8px; text-align: right;
+}
+.psp-wb-kaart-badge {
+  display: inline-block;
+  margin-top: 8px; font-size: .75rem; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px;
+  background: var(--psp-pink-lt); color: var(--psp-pink-dark);
+  border: 1px solid #f0a0cc;
+}
+
+/* ═══ Dienst detail modal ═══ */
+.psp-student-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(30,20,30,.45);
+  z-index: 9999;
+  align-items: center; justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+}
+.psp-student-modal-box {
+  background: #fff; border-radius: 16px;
+  width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,.18);
+}
+.psp-student-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--psp-border);
+  position: sticky; top: 0; background: #fff; z-index: 1;
+  border-radius: 16px 16px 0 0;
+}
+.psp-student-modal-header h3 {
+  margin: 0; font-size: 1.05rem; color: #1a1a2e;
+  font-weight: 700; letter-spacing: -.01em;
+}
+.psp-student-modal-sluit {
+  background: none; border: none; font-size: 1.2rem;
+  cursor: pointer; color: #bbb; padding: 4px 8px;
+  border-radius: 6px; line-height: 1; transition: all .15s;
+}
+.psp-student-modal-sluit:hover { background: #f4f4f6; color: var(--psp-gray); }
+.psp-student-modal-body { padding: 20px; }
+
+.psp-dm-info { margin-bottom: 4px; }
+.psp-dm-rij {
+  display: flex; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid #f5f5f5;
+  font-size: .9rem; align-items: center;
+}
+.psp-dm-rij:last-child { border-bottom: none; }
+.psp-dm-label {
+  min-width: 140px; color: #aaa;
+  font-weight: 500; flex-shrink: 0; font-size: .82rem;
+}
+
+.psp-dm-wb-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; font-size: 1rem; color: #1a1a2e;
+}
+
+@media (max-width: 480px) {
+  .psp-dm-label { min-width: 110px; font-size: .82rem; }
+  .psp-dm-rij   { font-size: .82rem; }
+}

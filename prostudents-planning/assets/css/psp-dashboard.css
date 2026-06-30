@@ -1,0 +1,727 @@
+/* ================================================================
+   ProStudents Planning — Dashboard (full-page)
+   Modern redesign: oranje → roze, cleaner look
+   ================================================================ */
+:root {
+  --psp-pink:      #d31775;
+  --psp-pink-dark: #b8116b;
+  --psp-pink-lt:   #fce8f2;
+  --psp-pink-mlt:  #fff0f7;
+  --psp-green:     #27ae60;
+  --psp-green-lt:  #e8f8f0;
+  --psp-gray:      #4b494a;
+  --psp-gray-lt:   #f7f7f7;
+  --psp-border:    #e8e8e8;
+  --psp-shadow:    0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+  --psp-shadow-md: 0 4px 24px rgba(0,0,0,.10);
+  --psp-radius:    10px;
+  --psp-adminbar:  0px;
+}
+
+body.psp-fullpage .entry-title,
+body.psp-fullpage .page-title,
+body.psp-fullpage h1.title,
+body.psp-fullpage .site-header,
+body.psp-fullpage .site-footer,
+body.psp-fullpage .main-navigation,
+body.psp-fullpage .nav-below,
+body.psp-fullpage .comments-area,
+body.psp-fullpage .post-navigation { display: none !important; }
+
+body.psp-fullpage { overflow: hidden; }
+
+#psp-dashboard {
+  position: fixed;
+  top: var(--psp-adminbar);
+  left: 0; right: 0; bottom: 0;
+  z-index: 9990;
+  background: #f4f4f6;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--psp-gray);
+}
+#psp-dashboard * { box-sizing: border-box; }
+
+/* ── Header ── */
+.psp-dash-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--psp-border);
+  padding: 10px 20px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  box-shadow: 0 1px 0 #e8e8e8, 0 2px 8px rgba(0,0,0,.04);
+  position: relative;
+  z-index: 10;
+}
+.psp-dash-logo {
+  font-weight: 800;
+  font-size: .92rem;
+  letter-spacing: -.01em;
+  color: var(--psp-pink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.psp-dash-tabs { display: flex; gap: 2px; flex: 1; }
+.psp-tab {
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: #999;
+  cursor: pointer;
+  transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+.psp-tab:hover { color: var(--psp-pink); background: var(--psp-pink-lt); }
+.psp-tab.active { background: var(--psp-pink); color: #fff; }
+
+.psp-dash-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.psp-week-label {
+  font-weight: 700;
+  font-size: .8rem;
+  min-width: 140px;
+  text-align: center;
+  color: var(--psp-gray);
+}
+.psp-btn-icon {
+  background: #fff;
+  border: 1px solid var(--psp-border);
+  border-radius: 6px;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  font-size: .8rem;
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
+  color: #888;
+}
+.psp-btn-icon:hover {
+  background: var(--psp-pink-lt);
+  border-color: var(--psp-pink);
+  color: var(--psp-pink);
+}
+
+/* ── Filter bar ── */
+.psp-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border-bottom: 1px solid var(--psp-border);
+  padding: 7px 20px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.psp-filter-label { font-size: .72rem; font-weight: 700; color: #bbb; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
+.psp-filter-select {
+  border: 1px solid var(--psp-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: .8rem;
+  color: var(--psp-gray);
+  background: #fff;
+  min-width: 160px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.psp-filter-select:focus { outline: none; border-color: var(--psp-pink); box-shadow: 0 0 0 2px rgba(211,23,117,.08); }
+.psp-filter-clear {
+  background: none;
+  border: 1px solid var(--psp-border);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: .75rem;
+  cursor: pointer;
+  color: #aaa;
+  transition: all .15s;
+}
+.psp-filter-clear:hover { background: #fee6e6; border-color: #e00; color: #c00; }
+.psp-filter-result { font-size: .75rem; color: var(--psp-pink); font-weight: 600; }
+
+/* ── Loader ── */
+.psp-loader {
+  position: absolute; inset: 0;
+  background: rgba(244,244,246,.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10; pointer-events: none;
+}
+.psp-spinner-lg {
+  width: 36px; height: 36px;
+  border: 3px solid var(--psp-pink-lt);
+  border-top-color: var(--psp-pink);
+  border-radius: 50%;
+  animation: psp-spin .7s linear infinite;
+}
+@keyframes psp-spin { to { transform: rotate(360deg); } }
+
+/* ── Tab panels ── */
+.psp-tab-panel {
+  flex: 1; overflow: hidden;
+  display: flex; flex-direction: column;
+  animation: psp-fadein .15s ease;
+  min-height: 0;
+}
+@keyframes psp-fadein { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Rooster layout ── */
+.psp-rooster-wrap {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  flex: 1; overflow: hidden; min-height: 0;
+}
+
+/* ── Sidebar ── */
+.psp-sidebar {
+  background: #fff;
+  border-right: 1px solid var(--psp-border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.psp-sidebar-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--psp-border);
+  flex-shrink: 0;
+}
+.psp-sidebar-header h3 { margin: 0; font-size: .82rem; font-weight: 700; color: var(--psp-gray); }
+.psp-diensten-lijst {
+  flex: 1; overflow-y: auto; padding: 8px; min-height: 0;
+}
+
+/* Dienst card sidebar */
+.psp-dienst-card {
+  border: 1px solid var(--psp-border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: box-shadow .15s, border-color .15s;
+  position: relative;
+  font-size: .82rem;
+  background: #fff;
+}
+.psp-dienst-card:hover { border-color: var(--psp-pink); box-shadow: 0 2px 8px rgba(211,23,117,.08); }
+.psp-dienst-card.vervuld { border-color: var(--psp-green); background: var(--psp-green-lt); }
+.psp-dienst-card.selected { border-color: var(--psp-pink); background: var(--psp-pink-lt); }
+.psp-dienst-card-title { font-weight: 700; margin-bottom: 2px; }
+.psp-dienst-card-meta  { font-size: .72rem; color: #999; line-height: 1.4; }
+.psp-dienst-card-badge {
+  display: inline-block;
+  font-size: .62rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+  margin-top: 4px; text-transform: uppercase; letter-spacing: .03em;
+}
+.psp-badge-open    { background: var(--psp-pink-lt); color: var(--psp-pink-dark); border: 1px solid #f0a0cc; }
+.psp-badge-vervuld { background: var(--psp-green-lt); color: #1a6b3a; }
+.psp-badge-ingepland { background: var(--psp-green-lt); color: #1a6b3a; }
+.psp-dienst-card-student { font-size: .7rem; color: var(--psp-green); font-weight: 600; margin-top: 3px; }
+.psp-dienst-card-edit {
+  position: absolute; top: 6px; right: 6px;
+  font-size: .7rem; background: none; border: none;
+  cursor: pointer; color: #ddd; padding: 1px; transition: color .15s;
+}
+.psp-dienst-card-edit:hover { color: var(--psp-pink); }
+
+/* ── Grid area ── */
+.psp-grid-area {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: #f4f4f6; min-height: 0;
+}
+.psp-grid-wrap { flex: 1; overflow: auto; min-height: 0; padding: 12px; }
+
+/* Grid table */
+.psp-grid {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: .8rem; min-width: 600px;
+  background: #fff; border-radius: var(--psp-radius);
+  box-shadow: var(--psp-shadow);
+}
+.psp-grid thead { position: sticky; top: 0; z-index: 5; }
+.psp-grid th {
+  background: #f7f7f8;
+  color: #888;
+  padding: 9px 6px;
+  text-align: center;
+  font-size: .7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--psp-border);
+}
+.psp-grid th.psp-col-naam {
+  text-align: left;
+  min-width: 150px;
+  position: sticky; left: 0; z-index: 6;
+  background: #f0f0f2;
+}
+.psp-grid td {
+  border-bottom: 1px solid #f0f0f0;
+  border-right: 1px solid #f0f0f0;
+  padding: 6px;
+  vertical-align: top;
+}
+.psp-grid td.psp-col-naam {
+  position: sticky; left: 0;
+  background: #fff; z-index: 1;
+  box-shadow: 2px 0 4px rgba(0,0,0,.04);
+}
+.psp-grid tr:hover td { background: #fafafa; }
+.psp-grid tr:hover td.psp-col-naam { background: #f8f8f8; }
+
+.psp-cell { text-align: center; min-width: 100px; }
+.psp-cell-leeg        { background: #fafafa !important; }
+.psp-cell-beschikbaar { background: var(--psp-pink-lt) !important; }
+.psp-cell-ingepland   { background: var(--psp-green-lt) !important; }
+.psp-cell-highlight   { background: #ffe0f0 !important; outline: 2px solid var(--psp-pink); }
+.psp-cell-time  { font-size: .7rem; color: #999; }
+.psp-cell-nvt   { color: #ddd; }
+
+.psp-delete-student {
+  background: none; border: none;
+  font-size: .8rem; cursor: pointer;
+  opacity: .25; padding: 1px; flex-shrink: 0; line-height: 1;
+  transition: opacity .15s;
+}
+.psp-delete-student:hover { opacity: 1; }
+
+.psp-assign-btn {
+  display: inline-block;
+  margin-top: 3px;
+  background: var(--psp-pink); color: #fff;
+  border: none; border-radius: 4px;
+  padding: 3px 7px; font-size: .65rem; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.psp-assign-btn:hover { background: var(--psp-pink-dark); }
+
+.psp-assigned-name { font-size: .72rem; font-weight: 700; color: #1a6b3a; }
+.psp-cell-actions { display: flex; gap: 3px; justify-content: center; margin-top: 3px; flex-wrap: wrap; }
+.psp-unassign-btn {
+  background: none; border: none; color: #ccc;
+  font-size: .65rem; cursor: pointer; padding: 0 2px; transition: color .15s;
+}
+.psp-unassign-btn:hover { color: #e00; }
+.psp-ziek-btn {
+  font-size: .62rem; font-weight: 700;
+  padding: 1px 4px; border-radius: 3px;
+  background: var(--psp-pink-lt); color: var(--psp-pink-dark); border: 1px solid #f0a0cc;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.psp-ziek-btn:hover { background: var(--psp-pink); color: #fff; border-color: var(--psp-pink); }
+
+.psp-student-naam { font-weight: 700; font-size: .82rem; }
+.psp-student-meta { font-size: .68rem; color: #aaa; }
+.psp-student-voorkeur { font-size: .65rem; color: var(--psp-pink); cursor: help; }
+
+/* ── Panel headers ── */
+.psp-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--psp-border);
+  flex-shrink: 0;
+}
+.psp-panel-header h3 { margin: 0; font-size: .95rem; font-weight: 700; letter-spacing: -.01em; }
+
+.psp-panel-body { flex: 1; overflow-y: auto; padding: 16px 20px; min-height: 0; }
+
+/* ── Tabel ── */
+.psp-table {
+  width: 100%; border-collapse: collapse;
+  background: #fff; border: 1px solid var(--psp-border);
+  border-radius: var(--psp-radius); overflow: hidden;
+  box-shadow: var(--psp-shadow); font-size: .82rem;
+}
+.psp-table th {
+  background: #f7f7f8; color: #888;
+  padding: 9px 12px; text-align: left;
+  font-size: .7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+  border-bottom: 2px solid var(--psp-border);
+}
+.psp-table td {
+  padding: 9px 12px;
+  border-top: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+.psp-table tr:hover td { background: var(--psp-gray-lt); }
+.psp-status-badge {
+  display: inline-block; padding: 3px 9px;
+  border-radius: 20px; font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.psp-tbl-action {
+  background: none; border: 1px solid var(--psp-border);
+  border-radius: 5px; padding: 3px 8px; font-size: .72rem; cursor: pointer;
+  transition: all .15s;
+}
+.psp-tbl-action:hover { background: var(--psp-pink-lt); border-color: var(--psp-pink); color: var(--psp-pink); }
+.psp-tbl-del {
+  background: none; border: 1px solid #e0c0c0;
+  border-radius: 5px; padding: 3px 6px; font-size: .75rem;
+  cursor: pointer; color: #c0392b; opacity: .5; transition: all .15s;
+}
+.psp-tbl-del:hover { opacity: 1; background: #fee; border-color: #c0392b; }
+
+/* ── Knoppen ── */
+.psp-btn-primary {
+  background: var(--psp-pink); color: #fff;
+  border: none; border-radius: 6px;
+  padding: 7px 14px; font-size: .82rem; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.psp-btn-primary:hover { background: var(--psp-pink-dark); }
+.psp-btn-ghost {
+  background: none; color: var(--psp-gray);
+  border: 1px solid var(--psp-border); border-radius: 6px;
+  padding: 7px 14px; font-size: .82rem; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.psp-btn-ghost:hover { background: var(--psp-gray-lt); }
+.psp-btn-danger {
+  background: none; color: #c0392b; border: 1px solid #e0b0b0;
+  border-radius: 6px; padding: 7px 14px; font-size: .82rem; cursor: pointer;
+  margin-left: auto; transition: background .15s;
+}
+.psp-btn-danger:hover { background: #fef0ee; }
+
+/* ── Modals ── */
+.psp-modal {
+  position: fixed; inset: 0; z-index: 99999;
+  background: rgba(30,20,30,.45);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  animation: psp-fadein .15s ease;
+  backdrop-filter: blur(2px);
+}
+.psp-modal-box {
+  background: #fff; border-radius: 14px;
+  width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,.22);
+}
+.psp-modal-sm { max-width: 400px; }
+.psp-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--psp-border);
+  position: sticky; top: 0; background: #fff; z-index: 1;
+  border-radius: 14px 14px 0 0;
+}
+.psp-modal-header h2 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -.01em; }
+.psp-modal-close {
+  background: none; border: none; font-size: 1rem; cursor: pointer;
+  color: #bbb; padding: 4px 6px; border-radius: 5px; transition: all .15s;
+}
+.psp-modal-close:hover { color: var(--psp-gray); background: #f5f5f5; }
+.psp-modal-body { padding: 18px 20px; }
+.psp-modal-footer {
+  display: flex; gap: 8px; padding: 12px 20px;
+  border-top: 1px solid var(--psp-border); background: var(--psp-gray-lt);
+  border-radius: 0 0 14px 14px;
+}
+
+.psp-form-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.psp-form-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.psp-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.psp-field label { font-size: .72rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .05em; }
+.psp-field input,
+.psp-field select,
+.psp-field textarea {
+  border: 1px solid var(--psp-border); border-radius: 7px;
+  padding: 8px 10px; font-size: .875rem; color: var(--psp-gray);
+  background: #fff; transition: border-color .2s, box-shadow .2s; width: 100%;
+}
+.psp-field input:focus,
+.psp-field select:focus,
+.psp-field textarea:focus {
+  outline: none; border-color: var(--psp-pink);
+  box-shadow: 0 0 0 3px rgba(211,23,117,.08);
+}
+
+/* Koppel modal */
+.psp-koppel-info { font-weight: 600; margin-bottom: 12px; font-size: .875rem; }
+.psp-koppel-opties { display: flex; flex-direction: column; gap: 6px; }
+.psp-koppel-optie {
+  display: flex; align-items: center; justify-content: space-between;
+  border: 1px solid var(--psp-border); border-radius: 8px;
+  padding: 9px 13px; cursor: pointer; transition: all .15s; background: #fff;
+}
+.psp-koppel-optie:hover { border-color: var(--psp-pink); background: var(--psp-pink-lt); }
+.psp-koppel-optie-info { font-size: .82rem; }
+.psp-koppel-optie-tijd { font-size: .72rem; color: #aaa; }
+.psp-koppel-btn-do {
+  background: var(--psp-pink); color: #fff;
+  border: none; border-radius: 5px;
+  padding: 5px 11px; font-size: .75rem; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.psp-koppel-btn-do:hover { background: var(--psp-pink-dark); }
+
+.psp-vervanger-dienst {
+  background: var(--psp-gray-lt); border-radius: 7px;
+  padding: 9px 12px; font-size: .82rem;
+  margin-bottom: 10px; border-left: 3px solid var(--psp-pink);
+}
+.psp-ziek-melding { font-size: .82rem; color: var(--psp-gray); margin-bottom: 10px; }
+
+/* ── Toast ── */
+#psp-toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 99999;
+  background: var(--psp-gray); color: #fff;
+  padding: 10px 18px; border-radius: 8px;
+  font-size: .82rem; font-weight: 600;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  transition: opacity .3s, transform .3s;
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+}
+#psp-toast.show  { opacity: 1; transform: none; }
+#psp-toast.success { background: var(--psp-green); }
+#psp-toast.error   { background: #c0392b; }
+
+.psp-empty-msg { color: #ccc; text-align: center; padding: 24px; font-size: .85rem; }
+.psp-dash-login { padding: 40px; text-align: center; color: #888; }
+
+@media (max-width: 768px) {
+  .psp-rooster-wrap { grid-template-columns: 1fr; }
+}
+
+/* ── Vaardigheden tags ── */
+.psp-vaard-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.psp-vaard-tag {
+  display: inline-block;
+  background: var(--psp-pink-lt);
+  color: var(--psp-pink);
+  font-size: .66rem; font-weight: 600;
+  padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+}
+
+/* ══ Scrollfix + open-diensten ══ */
+#psp-diensten-tabel-wrap,
+#psp-studenten-tabel-wrap {
+  flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0;
+}
+
+.psp-dienst-card.open {
+  border-left: 3px solid var(--psp-pink);
+  background: var(--psp-pink-mlt);
+}
+.psp-dienst-card.ingepland {
+  border-left: 3px solid var(--psp-green);
+  background: var(--psp-green-lt);
+}
+.psp-open-hint { font-size: .65rem; color: var(--psp-pink); font-style: italic; margin-top: 3px; }
+
+.psp-groep { margin-bottom: 2px; }
+.psp-groep-header {
+  font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: #ccc; padding: 10px 8px 4px; border-top: 1px solid #f0f0f0;
+  display: flex; align-items: center; gap: 6px;
+}
+.psp-groep:first-child .psp-groep-header { border-top: none; padding-top: 4px; }
+.psp-groep-open-badge {
+  background: var(--psp-pink-lt); color: var(--psp-pink);
+  font-size: .6rem; padding: 1px 6px; border-radius: 10px;
+  font-weight: 700; border: 1px solid #f0a0cc;
+}
+#psp-sidebar-open-count {
+  background: var(--psp-pink); color: #fff;
+  font-size: .65rem; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+}
+
+.psp-dag-open-badge {
+  display: inline-block;
+  background: var(--psp-pink-lt); color: var(--psp-pink);
+  font-size: .6rem; font-weight: 700; padding: 1px 5px;
+  border-radius: 8px; border: 1px solid #f0a0cc; margin-top: 2px;
+}
+.psp-grid th.psp-th-selected {
+  background: var(--psp-pink-lt); color: var(--psp-pink); border-bottom-color: var(--psp-pink);
+}
+.psp-cell-heeft-open { background: var(--psp-pink-mlt) !important; }
+.psp-assign-btn-highlight {
+  background: var(--psp-pink) !important;
+  animation: psp-pulse .8s ease infinite alternate;
+}
+@keyframes psp-pulse {
+  from { box-shadow: 0 0 0 1px rgba(211,23,117,.2); }
+  to   { box-shadow: 0 0 0 4px rgba(211,23,117,.35); }
+}
+.psp-assigned-dienst { font-size: .75rem; font-weight: 700; color: #1a6b3a; }
+.psp-assigned-time   { font-size: .68rem; color: #27ae60; }
+.psp-koppel-optie-selected { border-color: var(--psp-pink) !important; background: var(--psp-pink-lt) !important; }
+.psp-koppel-btn-primary { background: var(--psp-green) !important; font-size: .8rem !important; padding: 6px 14px !important; }
+
+/* ══ Inplannen-view ══ */
+.psp-inplannen-wrap {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  flex: 1; overflow: hidden; min-height: 0;
+}
+.psp-inplannen-studenten {
+  border-right: 1px solid var(--psp-border);
+  display: flex; flex-direction: column; overflow: hidden; background: #fff;
+}
+.psp-inplannen-diensten {
+  display: flex; flex-direction: column; overflow: hidden; background: #f4f4f6;
+}
+.psp-inplannen-col-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-bottom: 1px solid var(--psp-border);
+  background: #fff; flex-shrink: 0;
+  font-size: .82rem; font-weight: 700; color: var(--psp-gray);
+}
+.psp-inplannen-count {
+  background: var(--psp-pink); color: #fff;
+  font-size: .65rem; font-weight: 700;
+  padding: 1px 7px; border-radius: 10px;
+}
+.psp-inplannen-lijst { flex: 1; overflow-y: auto; padding: 10px; min-height: 0; }
+.psp-btn-sm { padding: 4px 10px !important; font-size: .75rem !important; }
+
+/* ── Student-kaart (inplannen) ── */
+.psp-ip-student-card {
+  border: 1px solid var(--psp-border); border-radius: 9px;
+  padding: 10px 12px; margin-bottom: 7px; cursor: pointer;
+  transition: all .15s; background: #fff;
+}
+.psp-ip-student-card:hover { border-color: var(--psp-pink); box-shadow: 0 2px 8px rgba(211,23,117,.08); }
+.psp-ip-student-card.selected {
+  border-color: var(--psp-pink); background: var(--psp-pink-lt);
+  box-shadow: 0 0 0 2px rgba(211,23,117,.18);
+}
+.psp-ip-student-card.ingepland { border-color: var(--psp-green); background: var(--psp-green-lt); }
+.psp-ip-student-card.conflict { opacity: .45; pointer-events: none; }
+.psp-ip-student-naam { font-weight: 700; font-size: .84rem; margin-bottom: 2px; }
+.psp-ip-student-meta { font-size: .68rem; color: #aaa; margin-bottom: 5px; }
+.psp-ip-dagen { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+.psp-ip-dag {
+  font-size: .65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase;
+}
+.psp-ip-dag.niet        { background: #f5f5f5; color: #ccc; }
+.psp-ip-dag.beschikbaar { background: var(--psp-pink-lt); color: var(--psp-pink); }
+.psp-ip-dag.heeft-open  { background: var(--psp-pink-lt); color: var(--psp-pink-dark); border: 1px solid #f0a0cc; }
+.psp-ip-dag.geselecteerd{ background: var(--psp-pink); color: #fff; }
+
+/* ── Dienst-kaart (inplannen) ── */
+.psp-ip-daggroep { margin-bottom: 12px; }
+.psp-ip-dagheader {
+  font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: #bbb; padding: 6px 4px 4px;
+  border-bottom: 1px solid var(--psp-border); margin-bottom: 6px;
+}
+.psp-ip-dienst-card {
+  border: 1px solid var(--psp-border); border-radius: 9px;
+  padding: 10px 12px; margin-bottom: 6px; cursor: pointer;
+  transition: all .15s; position: relative; background: #fff;
+}
+.psp-ip-dienst-card:hover { border-color: var(--psp-pink); box-shadow: 0 2px 8px rgba(211,23,117,.06); }
+.psp-ip-dienst-card.open     { border-left: 3px solid var(--psp-pink); }
+.psp-ip-dienst-card.ingepland{ border-left: 3px solid var(--psp-green); background: var(--psp-green-lt); }
+.psp-ip-dienst-card.selected { border-color: var(--psp-pink); background: var(--psp-pink-lt); box-shadow: 0 0 0 2px rgba(211,23,117,.14); }
+.psp-ip-dienst-card.dimmed   { opacity: .4; pointer-events: none; }
+.psp-ip-dienst-title { font-weight: 700; font-size: .84rem; margin-bottom: 2px; }
+.psp-ip-dienst-meta  { font-size: .72rem; color: #aaa; margin-bottom: 4px; }
+.psp-ip-student-naam { font-size: .72rem; color: var(--psp-green); font-weight: 600; }
+.psp-ip-koppel-btn {
+  display: block; width: 100%; margin-top: 8px;
+  background: var(--psp-green); color: #fff;
+  border: none; border-radius: 6px; padding: 7px 12px;
+  font-size: .8rem; font-weight: 700; cursor: pointer; transition: background .15s; text-align: center;
+}
+.psp-ip-koppel-btn:hover { background: #1e8449; }
+.psp-ip-select-btn {
+  display: inline-block; margin-top: 6px;
+  background: none; border: 1px solid var(--psp-pink); color: var(--psp-pink);
+  border-radius: 5px; padding: 3px 9px; font-size: .72rem; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.psp-ip-select-btn:hover { background: var(--psp-pink-lt); }
+
+/* ═══ Tariefmelding ═══ */
+.psp-btn-sm {
+  font-size: .78rem; padding: 4px 10px; border-radius: 6px;
+  border: none; cursor: pointer; font-weight: 600;
+}
+.psp-toast.info { background: #6366f1; }
+
+/* ═══ Beheer subtabs ═══ */
+.psp-beheer-subtabs {
+  display: flex; gap: 4px;
+  padding: 12px 20px 0;
+  background: #fff;
+  border-bottom: 1px solid var(--psp-border);
+  flex-shrink: 0;
+}
+.psp-stab {
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 14px; margin-bottom: -1px;
+  font-size: .84rem; font-weight: 600; color: #bbb;
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.psp-stab.active { color: var(--psp-pink); border-bottom-color: var(--psp-pink); }
+.psp-stab:hover  { color: var(--psp-pink); }
+.psp-stab-panel { flex: 1; overflow-y: auto; min-height: 0; }
+
+.psp-badge-groen { color: #16a34a; font-weight: 600; font-size: .82rem; }
+.psp-vaard-wrap  { max-width: 420px; }
+
+.psp-account-gegevens { background: #f8f8f9; border-radius: 8px; padding: 14px; }
+.psp-account-rij {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid #eee; font-size: .88rem;
+}
+.psp-account-rij:last-child { border: none; }
+.psp-account-rij > span { min-width: 120px; color: #aaa; font-size: .8rem; }
+
+/* ═══ Werkbevestiging ═══ */
+.psp-btn-wb-verzonden {
+  background: var(--psp-pink-lt);
+  color: var(--psp-pink-dark);
+  border: 1px solid #f0a0cc;
+  font-size: .75rem; padding: 3px 8px;
+  border-radius: 5px; cursor: pointer; margin-top: 4px; width: 100%;
+  transition: all .15s;
+}
+.psp-btn-wb-verzonden:hover { background: var(--psp-pink); color: #fff; border-color: var(--psp-pink); }
+.psp-btn-wb-bevestigd {
+  background: #f0fdf4; color: #15803d;
+  border: 1px solid #bbf7d0;
+  font-size: .75rem; padding: 3px 8px;
+  border-radius: 5px; cursor: default; margin-top: 4px; width: 100%;
+}
+.psp-wb-stuur-kaart-btn { display: block; margin-top: 6px; width: 100%; text-align: center; }
+
+.psp-wb-groep { margin-bottom: 24px; }
+.psp-wb-groep-titel {
+  font-size: .78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: #bbb;
+  margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--psp-border);
+}
+.psp-wb-kaarten {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.psp-wb-kaart {
+  background: #fff; border: 1.5px solid var(--psp-border);
+  border-radius: 10px; padding: 14px 16px;
+  box-shadow: var(--psp-shadow); transition: box-shadow .15s;
+}
+.psp-wb-kaart:hover { box-shadow: var(--psp-shadow-md); }
+.psp-wb-kaart-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
+}
+.psp-wb-kaart-header strong { font-size: .93rem; letter-spacing: -.01em; }
+.psp-wb-onderwerp { font-size: .8rem; color: #555; margin-bottom: 6px; }
+.psp-wb-preview { font-size: .78rem; color: #888; white-space: pre-line; line-height: 1.55; }
+.psp-wb-filter { display: flex; align-items: center; }

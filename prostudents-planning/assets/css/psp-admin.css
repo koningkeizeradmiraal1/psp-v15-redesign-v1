@@ -1,0 +1,112 @@
+/* ProStudents Planning — Admin (WP backend)
+   Redesign: modern, aansluitend op dashboard stijl */
+:root {
+  --psp-pink:     #d31775;
+  --psp-pink-lt:  #fce8f2;
+  --psp-green:    #27ae60;
+  --psp-green-lt: #e8f8f0;
+  --psp-gray:     #4b494a;
+  --psp-border:   #e8e8e8;
+}
+
+.psp-wrap { padding-top: 10px; }
+.psp-page-title { color: var(--psp-gray) !important; margin-bottom: 16px !important; }
+
+/* Week nav */
+.psp-week-nav {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px; flex-wrap: wrap;
+}
+.psp-week-label {
+  font-weight: 600; font-size: 1rem;
+  color: var(--psp-gray); min-width: 200px; text-align: center;
+}
+.psp-empty {
+  padding: 40px; text-align: center; color: #bbb;
+  background: #fafafa; border: 1px dashed var(--psp-border);
+  border-radius: 10px; font-size: .9rem;
+}
+
+/* Grid */
+.psp-grid-wrap { overflow-x: auto; }
+.psp-grid {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: .875rem; min-width: 760px;
+  border-radius: 10px; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.psp-grid th {
+  background: #f7f7f8; color: #888;
+  padding: 10px 8px; text-align: left;
+  font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+  white-space: nowrap; border-bottom: 2px solid var(--psp-border);
+}
+.psp-grid td {
+  border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0;
+  padding: 8px; vertical-align: top; background: #fff;
+}
+.psp-grid tr:hover td { background: #fafafa; }
+.psp-col-naam { min-width: 140px; }
+.psp-col-dag  { min-width: 110px; text-align: center; }
+
+.psp-cell-beschikbaar { background: var(--psp-pink-lt) !important; }
+.psp-cell-ingepland   { background: var(--psp-green-lt) !important; }
+.psp-cell-leeg        { background: #fafafa !important; }
+
+.psp-beschikbaar { font-size: .8rem; }
+.psp-ingepland   { font-size: .8rem; color: #1a6b3a; }
+.psp-nvt         { color: #ddd; font-size: .8rem; }
+
+.psp-dag-diensten { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+.psp-dienst-chip {
+  display: inline-block;
+  font-size: .7rem; background: var(--psp-pink); color: #fff;
+  padding: 2px 6px; border-radius: 4px; font-weight: 600;
+  text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 100px;
+}
+.psp-dienst-chip.vervuld { background: var(--psp-green); }
+
+.psp-btn-tiny {
+  display: inline-block; font-size: .7rem;
+  padding: 2px 6px; border-radius: 4px;
+  cursor: pointer; border: 1px solid;
+  margin-top: 3px; font-weight: 600; transition: all .15s;
+}
+.psp-koppel-btn {
+  background: var(--psp-pink); color: #fff; border-color: var(--psp-pink);
+}
+.psp-koppel-btn:hover { background: #b8116b; border-color: #b8116b; }
+.psp-verwijder-koppeling {
+  background: transparent; color: #bbb; border-color: #ddd; float: right;
+}
+.psp-verwijder-koppeling:hover { background: #fee; color: #c00; border-color: #c00; }
+
+.psp-status-badge {
+  display: inline-block; padding: 3px 9px;
+  border-radius: 20px; font-size: .72rem; font-weight: 700; text-transform: uppercase;
+}
+.psp-status-open     { background: var(--psp-pink-lt); color: #9a1257; border: 1px solid #f0a0cc; }
+.psp-status-vervuld  { background: var(--psp-green-lt); color: #1a6b3a; }
+.psp-status-geannuleerd { background: #fde8e8; color: #842029; }
+
+.psp-admin-form .form-table th { width: 180px; }
+
+.psp-overlay {
+  position: fixed; inset: 0;
+  background: rgba(30,20,30,.45);
+  z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.psp-overlay-box {
+  background: #fff; border-radius: 14px;
+  padding: 28px 32px; max-width: 400px; width: 90%;
+  text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,.22);
+}
+.psp-overlay-box p {
+  font-size: 1rem; margin-bottom: 20px; color: var(--psp-gray);
+}
+.psp-overlay-box .button { margin: 0 5px; }
+
+.psp-voorkeur { cursor: pointer; color: var(--psp-pink); }
