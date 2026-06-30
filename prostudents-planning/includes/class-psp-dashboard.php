@@ -26,6 +26,7 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_wb_templates_voor_og',  [self::class, 'ajax_wb_templates_voor_og']);
         add_action('wp_ajax_psp_wb_stuur',              [self::class, 'ajax_wb_stuur']);
         add_action('wp_ajax_psp_wb_bevestigingen',      [self::class, 'ajax_wb_bevestigingen']);
+        add_action('wp_ajax_psp_urenoverzicht',          [self::class, 'ajax_urenoverzicht']);
     }
 
     /* ─────────────── Shortcode ─────────────── */
@@ -218,6 +219,7 @@ class PSP_Dashboard {
       <button class="psp-stab" data-stab="studenten">&#128101; Student accounts</button>
       <button class="psp-stab" data-stab="werkbevestiging">&#128196; Werkbevestiging</button>
       <button class="psp-stab" data-stab="bevestigingen">&#10003; Bevestigingen</button>
+      <button class="psp-stab" data-stab="rapportage">&#128200; Uren</button>
     </div>
 
     <!-- Subtab: Tarieven -->
@@ -267,6 +269,30 @@ class PSP_Dashboard {
           </select>
         </div>
         <div id="psp-wb-lijst"><p class="psp-empty-msg">Laden&#8230;</p></div>
+      </div>
+    </div>
+
+    <!-- Subtab: Rapportage -->
+    <div id="psp-stab-rapportage" class="psp-stab-panel" style="display:none">
+      <div class="psp-panel-body">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap">
+          <p style="color:#666;font-size:.87rem;margin:0">Ingeplande uren op basis van diensten met een koppeling.</p>
+          <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <label style="font-size:.85rem;color:#555">Jaar:</label>
+            <select id="psp-rap-jaar" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem">
+              <?php
+              $huidig_jaar = (int) date('Y');
+              for ($y = $huidig_jaar; $y >= $huidig_jaar - 2; $y--) {
+                  echo "<option value=\"{$y}\"" . ($y === $huidig_jaar ? ' selected' : '') . ">{$y}</option>";
+              }
+              ?>
+            </select>
+            <button class="psp-btn-primary psp-btn-sm" id="psp-rap-laad-btn">Laden</button>
+          </div>
+        </div>
+        <div id="psp-rapportage-wrap">
+          <p class="psp-empty-msg">Kies een jaar en klik op Laden.</p>
+        </div>
       </div>
     </div>
 
@@ -973,6 +999,74 @@ class PSP_Dashboard {
         wp_delete_user( $user_id );
 
         wp_send_json_success( ['message' => 'Aanmelding afgewezen en account verwijderd.'] );
+    }
+
+    /* ─────────────── AJAX: urenoverzicht per week + per klant ─────────────── */
+    public static function ajax_urenoverzicht() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        global $wpdb;
+        $jaar = (int) ( $_POST['jaar'] ?? date('Y') );
+
+        // Helper: uren berekenen incl. nachtdiensten
+        // TIME_TO_SEC geeft seconden; als tot < van dan is het een nachtdienst (+86400s)
+        $uren_expr = "( TIME_TO_SEC(d.tijdstip_tot) - TIME_TO_SEC(d.tijdstip_van)
+                       + IF(d.tijdstip_tot < d.tijdstip_van, 86400, 0) ) / 3600.0";
+
+        // ── Per week ──────────────────────────────────────────────────────────
+        $per_week = $wpdb->get_results( $wpdb->prepare(
+            "SELECT
+                YEAR(d.datum)                       AS jaar,
+                WEEK(d.datum, 1)                    AS week_nr,
+                MIN(d.datum)                        AS week_start,
+                COUNT(DISTINCT k.id)                AS diensten,
+                COUNT(DISTINCT b.email)             AS studenten,
+                ROUND( SUM({$uren_expr}), 1 )       AS uren
+             FROM   " . PSP_TABLE_DIENSTEN . " d
+             JOIN   " . PSP_TABLE_KOPPELINGEN . " k ON k.dienst_id = d.id
+             JOIN   " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
+             WHERE  YEAR(d.datum) = %d
+             GROUP  BY jaar, week_nr
+             ORDER  BY jaar DESC, week_nr DESC",
+            $jaar
+        ) );
+
+        // ── Per klant ─────────────────────────────────────────────────────────
+        $per_klant = $wpdb->get_results( $wpdb->prepare(
+            "SELECT
+                d.opdrachtgever,
+                COUNT(DISTINCT k.id)                AS diensten,
+                COUNT(DISTINCT b.email)             AS studenten,
+                ROUND( SUM({$uren_expr}), 1 )       AS uren
+             FROM   " . PSP_TABLE_DIENSTEN . " d
+             JOIN   " . PSP_TABLE_KOPPELINGEN . " k ON k.dienst_id = d.id
+             JOIN   " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
+             WHERE  YEAR(d.datum) = %d
+             GROUP  BY d.opdrachtgever
+             ORDER  BY uren DESC",
+            $jaar
+        ) );
+
+        // ── Totalen ───────────────────────────────────────────────────────────
+        $totaal = $wpdb->get_row( $wpdb->prepare(
+            "SELECT
+                COUNT(DISTINCT k.id)                AS diensten,
+                COUNT(DISTINCT b.email)             AS studenten,
+                ROUND( SUM({$uren_expr}), 1 )       AS uren
+             FROM   " . PSP_TABLE_DIENSTEN . " d
+             JOIN   " . PSP_TABLE_KOPPELINGEN . " k ON k.dienst_id = d.id
+             JOIN   " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
+             WHERE  YEAR(d.datum) = %d",
+            $jaar
+        ) );
+
+        wp_send_json_success( array(
+            'jaar'      => $jaar,
+            'per_week'  => $per_week,
+            'per_klant' => $per_klant,
+            'totaal'    => $totaal,
+        ) );
     }
 
     /* ─────────────── AJAX: bevestigingen overzicht voor recruiter ─────────────── */

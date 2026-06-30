@@ -924,6 +924,7 @@
         if (btn.dataset.stab === 'studenten')      laadStudentenTab();
         if (btn.dataset.stab === 'werkbevestiging') initWbTab();
         if (btn.dataset.stab === 'bevestigingen')  laadWbBevestigingen();
+        if (btn.dataset.stab === 'rapportage')     initRapportageTab();
       });
     });
 
@@ -1546,6 +1547,102 @@
     }, function () {
       el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
     });
+  }
+
+  /* ════════════════════════════════════════════════════
+     RAPPORTAGE — uren per week + per klant
+  ════════════════════════════════════════════════════ */
+
+  var _rapportageInit = false;
+
+  function initRapportageTab() {
+    if (!_rapportageInit) {
+      _rapportageInit = true;
+      var btn = document.getElementById('psp-rap-laad-btn');
+      if (btn) btn.addEventListener('click', laadUrenoverzicht);
+      // Direct laden voor huidig jaar
+      laadUrenoverzicht();
+    }
+  }
+
+  function laadUrenoverzicht() {
+    var wrap = document.getElementById('psp-rapportage-wrap');
+    if (!wrap) return;
+    var jaar = (document.getElementById('psp-rap-jaar') || {}).value || new Date().getFullYear();
+    wrap.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
+
+    ajax('psp_urenoverzicht', { jaar: jaar }, function (data) {
+      var totaal    = data.totaal    || {};
+      var perWeek   = data.per_week  || [];
+      var perKlant  = data.per_klant || [];
+
+      if (!perWeek.length && !perKlant.length) {
+        wrap.innerHTML = '<p class="psp-empty-msg">Geen ingeplande diensten gevonden voor ' + jaar + '.</p>';
+        return;
+      }
+
+      // ── Totalen balk ──────────────────────────────────────────────
+      var html = '<div class="psp-rap-totalen">'
+        + '<div class="psp-rap-totaal-item"><span class="psp-rap-getal">' + (totaal.uren || 0) + '</span><span class="psp-rap-label">totaal uren</span></div>'
+        + '<div class="psp-rap-totaal-item"><span class="psp-rap-getal">' + (totaal.diensten || 0) + '</span><span class="psp-rap-label">diensten</span></div>'
+        + '<div class="psp-rap-totaal-item"><span class="psp-rap-getal">' + (totaal.studenten || 0) + '</span><span class="psp-rap-label">unieke studenten</span></div>'
+        + '</div>';
+
+      // ── Twee kolommen ─────────────────────────────────────────────
+      html += '<div class="psp-rap-kolommen">';
+
+      // Linker kolom: per klant
+      html += '<div class="psp-rap-kolom">'
+        + '<h4 class="psp-rap-kop">Uren per opdrachtgever</h4>'
+        + '<table class="psp-table psp-rap-tabel"><thead><tr>'
+        + '<th>Opdrachtgever</th><th style="text-align:right">Uren</th><th style="text-align:right">Diensten</th>'
+        + '</tr></thead><tbody>';
+
+      var maxUren = perKlant.length ? parseFloat(perKlant[0].uren) : 1;
+      perKlant.forEach(function (r) {
+        var pct = Math.round((parseFloat(r.uren) / maxUren) * 100);
+        html += '<tr>'
+          + '<td><div style="display:flex;flex-direction:column;gap:3px">'
+          + '<span style="font-weight:600;font-size:.88rem">' + esc(r.opdrachtgever) + '</span>'
+          + '<div style="height:4px;border-radius:2px;background:#fce8f2;width:100%">'
+          + '<div style="height:4px;border-radius:2px;background:#d31775;width:' + pct + '%"></div></div>'
+          + '</div></td>'
+          + '<td style="text-align:right;font-weight:700;color:#d31775">' + r.uren + '</td>'
+          + '<td style="text-align:right;color:#888">' + r.diensten + '</td>'
+          + '</tr>';
+      });
+      html += '</tbody></table></div>';
+
+      // Rechter kolom: per week
+      html += '<div class="psp-rap-kolom">'
+        + '<h4 class="psp-rap-kop">Uren per week</h4>'
+        + '<table class="psp-table psp-rap-tabel"><thead><tr>'
+        + '<th>Week</th><th>Periode</th><th style="text-align:right">Uren</th><th style="text-align:right">Diensten</th>'
+        + '</tr></thead><tbody>';
+
+      perWeek.forEach(function (r) {
+        var d   = new Date(r.week_start);
+        var dVr = new Date(d); dVr.setDate(d.getDate() + 4);
+        var maStr = d.getDate() + ' ' + MONTHS[d.getMonth()];
+        var vrStr = dVr.getDate() + ' ' + MONTHS[dVr.getMonth()];
+        html += '<tr>'
+          + '<td><span style="font-weight:700">Wk ' + r.week_nr + '</span></td>'
+          + '<td style="color:#888;font-size:.82rem">' + maStr + ' – ' + vrStr + '</td>'
+          + '<td style="text-align:right;font-weight:700;color:#d31775">' + r.uren + '</td>'
+          + '<td style="text-align:right;color:#888">' + r.diensten + '</td>'
+          + '</tr>';
+      });
+      html += '</tbody></table></div>';
+
+      html += '</div>'; // psp-rap-kolommen
+      wrap.innerHTML = html;
+    }, function () {
+      wrap.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
+    });
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
 })();
