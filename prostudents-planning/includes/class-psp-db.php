@@ -116,7 +116,10 @@ class PSP_DB {
     public static function get_beschikbaarheid_by_week( $week_start ) {
         global $wpdb;
         return $wpdb->get_results( $wpdb->prepare(
-            "SELECT * FROM " . PSP_TABLE_BESCHIKBAARHEID . " WHERE week_start = %s AND status = 'actief' ORDER BY naam ASC",
+            "SELECT * FROM " . PSP_TABLE_BESCHIKBAARHEID . "
+             WHERE week_start = %s AND status = 'actief'
+               AND voorkeur != 'excel-import'
+             ORDER BY naam ASC",
             $week_start
         ) );
     }
