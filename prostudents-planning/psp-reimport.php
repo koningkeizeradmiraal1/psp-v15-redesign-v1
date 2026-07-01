@@ -5771,15 +5771,17 @@ $dienst_id_map = [];
 $dienst_ok = 0;
 foreach ($diensten_data as $idx => $d) {
     [$klant, $week_start, $datum, $van, $tot, $naam, $omschrijving] = $d;
+    $van_tijd = $van ?: '00:00:00';
+    $tot_tijd = $tot ?: '00:00:00';
     $ok = $wpdb->insert(TB_DIENST, [
-        'klant'       => $klant,
-        'week_start'  => $week_start,
-        'datum'       => $datum,
-        'van_tijd'    => $van,
-        'tot_tijd'    => $tot,
-        'type_werk'   => $naam,
-        'omschrijving'=> $omschrijving,
-        'status'      => 'actief',
+        'titel'         => trim($naam . ' – ' . $klant),
+        'opdrachtgever' => $klant ?: $naam,
+        'datum'         => $datum,
+        'tijdstip_van'  => $van_tijd,
+        'tijdstip_tot'  => $tot_tijd,
+        'type_werk'     => $naam,
+        'omschrijving'  => $omschrijving,
+        'status'        => 'open',
     ]);
     if ($ok) {
         $dienst_id_map[$idx] = $wpdb->insert_id;
