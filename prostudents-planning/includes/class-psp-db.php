@@ -118,7 +118,7 @@ class PSP_DB {
         return $wpdb->get_results( $wpdb->prepare(
             "SELECT * FROM " . PSP_TABLE_BESCHIKBAARHEID . "
              WHERE week_start = %s AND status = 'actief'
-               AND voorkeur != 'excel-import'
+               AND (voorkeur IS NULL OR voorkeur != 'excel-import')
              ORDER BY naam ASC",
             $week_start
         ) );
