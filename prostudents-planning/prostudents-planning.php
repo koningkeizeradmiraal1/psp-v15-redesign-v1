@@ -129,8 +129,9 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_style(  'psp-dashboard', PSP_URL . 'assets/css/psp-dashboard.css', array(), PSP_VERSION );
         wp_enqueue_script( 'psp-dashboard', PSP_URL . 'assets/js/psp-dashboard.js',   array(), PSP_VERSION, true );
         wp_localize_script( 'psp-dashboard', 'pspDash', array(
-            'ajaxUrl'        => admin_url('admin-ajax.php'),
-            'mijnRoosterUrl' => home_url('/mijn-rooster/'),
+            'ajaxUrl'           => admin_url('admin-ajax.php'),
+            'mijnRoosterUrl'    => home_url('/mijn-rooster/'),
+            'vaardighedenDef'   => PSP_Frontend::vaardigheden_definitie(),
         ) );
     }
 

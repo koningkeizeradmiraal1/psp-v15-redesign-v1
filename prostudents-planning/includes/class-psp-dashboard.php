@@ -425,6 +425,24 @@ class PSP_Dashboard {
 </div>
 
 
+<!-- MODAL: Vaardigheden bewerken -->
+<div id="psp-modal-vaardigheden" class="psp-modal" style="display:none">
+  <div class="psp-modal-box psp-modal-vaardigheden">
+    <div class="psp-modal-header">
+      <h2>&#9998; Vaardigheden — <span id="psp-vaard-modal-naam"></span></h2>
+    </div>
+    <div class="psp-modal-body" style="overflow-y:auto;max-height:65vh">
+      <form id="psp-vaard-modal-form" data-user-id="0">
+        <div class="psp-vaard-velden"></div>
+      </form>
+    </div>
+    <div class="psp-modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="psp-btn-ghost" id="psp-vaard-modal-sluit">Annuleren</button>
+      <button class="psp-btn-primary" id="psp-vaard-modal-opslaan">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Werkbevestiging template -->
 <div id="psp-modal-wb" class="psp-modal" style="display:none">
   <div class="psp-modal-box">
@@ -832,12 +850,27 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        $user_id      = (int) ( $_POST['user_id'] ?? 0 );
-        $vaardigheden = isset($_POST['vaardigheden']) && is_array($_POST['vaardigheden'])
-            ? array_map('sanitize_key', $_POST['vaardigheden'])
-            : array();
-
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
         if ( ! $user_id ) wp_send_json_error( array( 'message' => 'Geen gebruiker opgegeven.' ) );
+
+        $definitie    = PSP_Frontend::vaardigheden_definitie();
+        $vaardigheden = array();
+
+        if ( isset($_POST['vaardigheden']) && is_array($_POST['vaardigheden']) ) {
+            foreach ( $_POST['vaardigheden'] as $k => $v ) {
+                $k = sanitize_key($k);
+                if ( ! isset($definitie[$k]) ) continue;
+                $type = $definitie[$k]['type'];
+                if ( $type === 'checkbox' ) {
+                    $vaardigheden[$k] = ($v === '1' || $v === 'ja') ? '1' : '0';
+                } elseif ( $type === 'textarea' ) {
+                    $vaardigheden[$k] = sanitize_textarea_field($v);
+                } else {
+                    $vaardigheden[$k] = sanitize_text_field($v);
+                }
+            }
+        }
+
         update_user_meta( $user_id, 'psp_vaardigheden', $vaardigheden );
         wp_send_json_success( array( 'message' => '\u2713 Vaardigheden opgeslagen.' ) );
     }

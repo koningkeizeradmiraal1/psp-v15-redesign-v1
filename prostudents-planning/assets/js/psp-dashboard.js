@@ -1005,27 +1005,40 @@
         + '<th>Naam</th><th>E-mail</th><th>Account</th><th>Vaardigheden</th><th></th>'
         + '</tr></thead><tbody>';
 
-      data.forEach(function (s) {
-        var vaardLijst = Object.keys(PSP_VAARDIGHEDEN).map(function (k) {
-          var checked = s.vaardigheden && s.vaardigheden.indexOf(k) > -1 ? 'checked' : '';
-          return '<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 6px 2px 0;font-size:.78rem">'
-            + '<input type="checkbox" class="psp-vaard-check" data-key="' + esc(k) + '" ' + checked + '> '
-            + esc(PSP_VAARDIGHEDEN[k]) + '</label>';
-        }).join('');
+      // Toon vaardigheidsbadges
+      function vaardBadges(vaard) {
+        if (!vaard || typeof vaard !== 'object' || Array.isArray(vaard)) return '<span style="color:#bbb;font-size:.78rem">—</span>';
+        var def = (pspDash && pspDash.vaardighedenDef) ? pspDash.vaardighedenDef : {};
+        var badges = [];
+        Object.keys(vaard).forEach(function(k) {
+          var v = vaard[k];
+          if (!v || v === '0' || v === '') return;
+          if (!def[k]) return;
+          var label = def[k].label;
+          if (v === '1') {
+            badges.push('<span class="psp-vaard-badge">' + esc(label) + '</span>');
+          } else {
+            badges.push('<span class="psp-vaard-badge">' + esc(label) + ': ' + esc(v) + '</span>');
+          }
+        });
+        return badges.length ? badges.join('') : '<span style="color:#bbb;font-size:.78rem">Geen</span>';
+      }
 
+      data.forEach(function (s) {
         html += '<tr data-user-id="' + (s.user_id || 0) + '" data-email="' + esc(s.email) + '" data-naam="' + esc(s.naam) + '">'
           + '<td><strong>' + esc(s.naam) + '</strong></td>'
-          + '<td>' + esc(s.email) + '</td>'
+          + '<td><small>' + esc(s.email) + '</small></td>'
           + '<td>' + ( s.has_account
               ? '<span class="psp-badge-groen">&#10003; Actief</span>'
               : '<button class="psp-btn-sm psp-btn-primary psp-maak-acc-btn">Account aanmaken</button>' )
           + '</td>'
+          + '<td class="psp-vaard-badges-cel">' + vaardBadges(s.vaardigheden) + '</td>'
           + '<td>' + ( s.has_account
-              ? '<div class="psp-vaard-wrap">' + vaardLijst + '</div>'
-              : '<span style="color:#aaa;font-size:.78rem">Maak eerst een account aan</span>' )
-          + '</td>'
-          + '<td>' + ( s.has_account
-              ? '<button class="psp-btn-sm psp-btn-ghost psp-sla-vaard-btn">Opslaan</button>'
+              ? '<button class="psp-btn-sm psp-btn-ghost psp-edit-vaard-btn" '
+                + 'data-user-id="' + (s.user_id||0) + '" '
+                + 'data-naam="' + esc(s.naam) + '" '
+                + 'data-vaard=\'' + JSON.stringify(s.vaardigheden||{}).replace(/\'/g,"&#39;") + '\''
+                + '>✎ Vaardigheden</button>'
               : '' )
           + '</td>'
           + '</tr>';
@@ -1047,7 +1060,7 @@
             var urlEl = document.getElementById('psp-acc-url');
             urlEl.href = res.login_url; urlEl.textContent = res.login_url;
             document.getElementById('psp-modal-account').style.display = 'flex';
-            laadStudentenTab(); // herlaad lijst
+            laadStudentenTab();
           }, function (msg) {
             toast(msg || 'Account aanmaken mislukt.', 'error');
             btn.disabled = false; btn.textContent = 'Account aanmaken';
@@ -1055,27 +1068,103 @@
         });
       });
 
-      // Vaardigheden opslaan
-      el.querySelectorAll('.psp-sla-vaard-btn').forEach(function (btn) {
+      // Vaardigheden bewerken -> modal
+      el.querySelectorAll('.psp-edit-vaard-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          var tr      = btn.closest('tr');
-          var userId  = parseInt(tr.dataset.userId || tr.dataset.user_id || 0);
-          var checks  = tr.querySelectorAll('.psp-vaard-check:checked');
-          var vaard   = Array.from(checks).map(function (c) { return c.dataset.key; });
-          btn.disabled = true; btn.textContent = '…';
-          ajax('psp_save_student_vaardigheden', { user_id: userId, vaardigheden: vaard }, function (res) {
-            toast(res.message || '\u2713 Opgeslagen.', 'success');
-            btn.disabled = false; btn.textContent = 'Opslaan';
-          }, function (msg) {
-            toast(msg || 'Opslaan mislukt.', 'error');
-            btn.disabled = false; btn.textContent = 'Opslaan';
-          });
+          openVaardModal(
+            parseInt(btn.dataset.userId || 0),
+            btn.dataset.naam,
+            JSON.parse(btn.dataset.vaard || '{}')
+          );
         });
       });
+
     }, function () {
       el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
     });
   }
+
+  /* -- Vaardigheden modal ------------------------------------------------- */
+  function openVaardModal(userId, naam, huidig) {
+    var def   = (pspDash && pspDash.vaardighedenDef) ? pspDash.vaardighedenDef : {};
+    var modal = document.getElementById('psp-modal-vaardigheden');
+    if (!modal) return;
+    document.getElementById('psp-vaard-modal-naam').textContent = naam;
+    var form = document.getElementById('psp-vaard-modal-form');
+    form.dataset.userId = userId;
+
+    var groepen = {};
+    Object.keys(def).forEach(function(k) {
+      var g = def[k].groep || 'Overig';
+      if (!groepen[g]) groepen[g] = [];
+      groepen[g].push(k);
+    });
+
+    var html = '';
+    Object.keys(groepen).forEach(function(groep) {
+      html += '<div class="psp-vaard-groep"><div class="psp-vaard-groep-titel">' + esc(groep) + '</div><div class="psp-vaard-groep-items">';
+      groepen[groep].forEach(function(k) {
+        var veld = def[k];
+        var val  = (huidig && huidig[k] !== undefined) ? huidig[k] : '';
+        if (veld.type === 'checkbox') {
+          var chk = (val === '1') ? 'checked' : '';
+          html += '<label class="psp-vaard-check-lbl"><input type="checkbox" name="vaard[' + esc(k) + ']" value="1" ' + chk + '> ' + esc(veld.label) + '</label>';
+        } else if (veld.type === 'select') {
+          html += '<label class="psp-vaard-select-lbl">' + esc(veld.label) + ' <select name="vaard[' + esc(k) + ']">';
+          Object.keys(veld.opties).forEach(function(ov) {
+            html += '<option value="' + esc(ov) + '"' + (val === ov ? ' selected' : '') + '>' + esc(veld.opties[ov]) + '</option>';
+          });
+          html += '</select></label>';
+        } else {
+          html += '<label class="psp-vaard-text-lbl">' + esc(veld.label) + ' <textarea name="vaard[' + esc(k) + ']" rows="3">' + esc(val) + '</textarea></label>';
+        }
+      });
+      html += '</div></div>';
+    });
+    form.querySelector('.psp-vaard-velden').innerHTML = html;
+    modal.style.display = 'flex';
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Sluiten vaardigheden modal
+    var sluitVaard = document.getElementById('psp-vaard-modal-sluit');
+    if (sluitVaard) sluitVaard.addEventListener('click', function() {
+      document.getElementById('psp-modal-vaardigheden').style.display = 'none';
+    });
+    // Opslaan vaardigheden
+    var opslaanVaard = document.getElementById('psp-vaard-modal-opslaan');
+    if (opslaanVaard) opslaanVaard.addEventListener('click', function() {
+      var form   = document.getElementById('psp-vaard-modal-form');
+      var userId = parseInt(form.dataset.userId || 0);
+      var def    = (pspDash && pspDash.vaardighedenDef) ? pspDash.vaardighedenDef : {};
+      var vaard  = {};
+      // Checkboxes
+      form.querySelectorAll('input[type=checkbox][name^="vaard["]').forEach(function(inp) {
+        var k = inp.name.replace('vaard[','').replace(']','');
+        vaard[k] = inp.checked ? '1' : '0';
+      });
+      // Selects
+      form.querySelectorAll('select[name^="vaard["]').forEach(function(sel) {
+        var k = sel.name.replace('vaard[','').replace(']','');
+        vaard[k] = sel.value;
+      });
+      // Textareas
+      form.querySelectorAll('textarea[name^="vaard["]').forEach(function(ta) {
+        var k = ta.name.replace('vaard[','').replace(']','');
+        vaard[k] = ta.value;
+      });
+      opslaanVaard.disabled = true; opslaanVaard.textContent = '…';
+      ajax('psp_save_student_vaardigheden', { user_id: userId, vaardigheden: vaard }, function(res) {
+        toast(res.message || '✓ Opgeslagen.', 'success');
+        document.getElementById('psp-modal-vaardigheden').style.display = 'none';
+        laadStudentenTab();
+        opslaanVaard.disabled = false; opslaanVaard.textContent = 'Opslaan';
+      }, function(msg) {
+        toast(msg || 'Opslaan mislukt.', 'error');
+        opslaanVaard.disabled = false; opslaanVaard.textContent = 'Opslaan';
+      });
+    });
+  });
 
   // Account modal sluiten
   document.addEventListener('DOMContentLoaded', function () {
@@ -1468,181 +1557,4 @@
           + '<td><strong style="color:#15803d">' + esc((r.bevestigd_op || '').substring(0, 16)) + '</strong></td>'
           + '</tr>';
       });
-      html += '</tbody></table>';
-      el.innerHTML = html;
-    }, function () {
-      el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
-    });
-  }
-
-
-  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-     AANMELDINGEN (Beheer subtab)
-  \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-
-  function laadAanmeldingenBadge() {
-    ajax('psp_get_aanmeldingen', {}, function (data) {
-      var n = Array.isArray(data) ? data.length : 0;
-      var badge = document.getElementById('psp-aanmeldingen-badge');
-      if (badge) { badge.textContent = n; badge.style.display = n ? '' : 'none'; }
-    });
-  }
-
-  function laadAanmeldingen() {
-    var el = document.getElementById('psp-aanmeldingen-lijst');
-    if (!el) return;
-    el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
-    ajax('psp_get_aanmeldingen', {}, function (data) {
-      if (!Array.isArray(data) || !data.length) {
-        el.innerHTML = '<p class="psp-empty-msg">Geen nieuwe aanmeldingen.</p>';
-        laadAanmeldingenBadge();
-        return;
-      }
-      var html = '<table class="psp-table"><thead><tr>'
-        + '<th>Naam</th><th>E-mail</th><th>Telefoon</th><th>Datum</th><th style="width:190px">Actie</th>'
-        + '</tr></thead><tbody>';
-      data.forEach(function (r) {
-        html += '<tr data-uid="' + r.user_id + '">'
-          + '<td><strong>' + esc(r.naam) + '</strong></td>'
-          + '<td>' + esc(r.email) + '</td>'
-          + '<td>' + esc(r.telefoon || '\u2014') + '</td>'
-          + '<td>' + esc(r.datum) + '</td>'
-          + '<td style="display:flex;gap:6px">'
-          + '<button class="psp-btn-primary psp-btn-sm psp-aanm-goed" data-uid="' + r.user_id + '" data-naam="' + esc(r.naam) + '">\u2713 Goedkeuren</button>'
-          + '<button class="psp-tbl-del psp-aanm-af" data-uid="' + r.user_id + '" data-naam="' + esc(r.naam) + '" title="Afwijzen">\u2717</button>'
-          + '</td></tr>';
-      });
-      html += '</tbody></table>';
-      el.innerHTML = html;
-
-      el.querySelectorAll('.psp-aanm-goed').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          if (!confirm('Account van ' + btn.dataset.naam + ' goedkeuren en welkomstmail sturen?')) return;
-          btn.disabled = true; btn.textContent = '\u2026';
-          ajax('psp_goedkeur_aanmelding', { user_id: btn.dataset.uid }, function (res) {
-            toast(res.message || '\u2713 Goedgekeurd.', 'success');
-            laadAanmeldingen();
-          }, function (msg) {
-            toast(msg || 'Mislukt.', 'error');
-            btn.disabled = false; btn.textContent = '\u2713 Goedkeuren';
-          });
-        });
-      });
-
-      el.querySelectorAll('.psp-aanm-af').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          if (!confirm('Aanmelding van ' + btn.dataset.naam + ' afwijzen en account verwijderen?')) return;
-          btn.disabled = true;
-          ajax('psp_wijs_af_aanmelding', { user_id: btn.dataset.uid }, function (res) {
-            toast(res.message || 'Afgewezen.', 'success');
-            laadAanmeldingen();
-          }, function (msg) {
-            toast(msg || 'Mislukt.', 'error');
-            btn.disabled = false;
-          });
-        });
-      });
-
-      laadAanmeldingenBadge();
-    }, function () {
-      el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
-    });
-  }
-
-  /* ════════════════════════════════════════════════════
-     RAPPORTAGE — uren per week + per klant
-  ════════════════════════════════════════════════════ */
-
-  var _rapportageInit = false;
-
-  function initRapportageTab() {
-    if (!_rapportageInit) {
-      _rapportageInit = true;
-      var btn = document.getElementById('psp-rap-laad-btn');
-      if (btn) btn.addEventListener('click', laadUrenoverzicht);
-      // Direct laden voor huidig jaar
-      laadUrenoverzicht();
-    }
-  }
-
-  function laadUrenoverzicht() {
-    var wrap = document.getElementById('psp-rapportage-wrap');
-    if (!wrap) return;
-    var jaar = (document.getElementById('psp-rap-jaar') || {}).value || new Date().getFullYear();
-    wrap.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
-
-    ajax('psp_urenoverzicht', { jaar: jaar }, function (data) {
-      var totaal    = data.totaal    || {};
-      var perWeek   = data.per_week  || [];
-      var perKlant  = data.per_klant || [];
-
-      if (!perWeek.length && !perKlant.length) {
-        wrap.innerHTML = '<p class="psp-empty-msg">Geen ingeplande diensten gevonden voor ' + jaar + '.</p>';
-        return;
-      }
-
-      // ── Totalen balk ──────────────────────────────────────────────
-      var html = '<div class="psp-rap-totalen">'
-        + '<div class="psp-rap-totaal-item"><span class="psp-rap-getal">' + (totaal.uren || 0) + '</span><span class="psp-rap-label">totaal uren</span></div>'
-        + '<div class="psp-rap-totaal-item"><span class="psp-rap-getal">' + (totaal.diensten || 0) + '</span><span class="psp-rap-label">diensten</span></div>'
-        + '<div class="psp-rap-totaal-item"><span class="psp-rap-getal">' + (totaal.studenten || 0) + '</span><span class="psp-rap-label">unieke studenten</span></div>'
-        + '</div>';
-
-      // ── Twee kolommen ─────────────────────────────────────────────
-      html += '<div class="psp-rap-kolommen">';
-
-      // Linker kolom: per klant
-      html += '<div class="psp-rap-kolom">'
-        + '<h4 class="psp-rap-kop">Uren per opdrachtgever</h4>'
-        + '<table class="psp-table psp-rap-tabel"><thead><tr>'
-        + '<th>Opdrachtgever</th><th style="text-align:right">Uren</th><th style="text-align:right">Diensten</th>'
-        + '</tr></thead><tbody>';
-
-      var maxUren = perKlant.length ? parseFloat(perKlant[0].uren) : 1;
-      perKlant.forEach(function (r) {
-        var pct = Math.round((parseFloat(r.uren) / maxUren) * 100);
-        html += '<tr>'
-          + '<td><div style="display:flex;flex-direction:column;gap:3px">'
-          + '<span style="font-weight:600;font-size:.88rem">' + esc(r.opdrachtgever) + '</span>'
-          + '<div style="height:4px;border-radius:2px;background:#fce8f2;width:100%">'
-          + '<div style="height:4px;border-radius:2px;background:#d31775;width:' + pct + '%"></div></div>'
-          + '</div></td>'
-          + '<td style="text-align:right;font-weight:700;color:#d31775">' + r.uren + '</td>'
-          + '<td style="text-align:right;color:#888">' + r.diensten + '</td>'
-          + '</tr>';
-      });
-      html += '</tbody></table></div>';
-
-      // Rechter kolom: per week
-      html += '<div class="psp-rap-kolom">'
-        + '<h4 class="psp-rap-kop">Uren per week</h4>'
-        + '<table class="psp-table psp-rap-tabel"><thead><tr>'
-        + '<th>Week</th><th>Periode</th><th style="text-align:right">Uren</th><th style="text-align:right">Diensten</th>'
-        + '</tr></thead><tbody>';
-
-      perWeek.forEach(function (r) {
-        var d   = new Date(r.week_start);
-        var dVr = new Date(d); dVr.setDate(d.getDate() + 4);
-        var maStr = d.getDate() + ' ' + MONTHS[d.getMonth()];
-        var vrStr = dVr.getDate() + ' ' + MONTHS[dVr.getMonth()];
-        html += '<tr>'
-          + '<td><span style="font-weight:700">Wk ' + r.week_nr + '</span></td>'
-          + '<td style="color:#888;font-size:.82rem">' + maStr + ' – ' + vrStr + '</td>'
-          + '<td style="text-align:right;font-weight:700;color:#d31775">' + r.uren + '</td>'
-          + '<td style="text-align:right;color:#888">' + r.diensten + '</td>'
-          + '</tr>';
-      });
-      html += '</tbody></table></div>';
-
-      html += '</div>'; // psp-rap-kolommen
-      wrap.innerHTML = html;
-    }, function () {
-      wrap.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
-    });
-  }
-
-  function esc(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-})();
+      

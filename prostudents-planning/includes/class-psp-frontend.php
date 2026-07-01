@@ -4,16 +4,67 @@ defined('ABSPATH') || exit;
 class PSP_Frontend {
 
     public static function vaardigheden_lijst() {
+        // Compacte lijst voor filterdropdown en beschikbaarheidformulier
         return array(
-            'catering'           => 'Catering',
-            'lopen_met_3_borden' => 'Lopen met 3 borden',
-            'lopen_met_plateau'  => 'Lopen met plateau',
-            'housekeeping'       => 'Housekeeping',
-            'schoonmaak'         => 'Schoonmaak',
-            'productiewerk'      => 'Productiewerk',
-            'inpakwerkzaamheden' => 'Inpakwerkzaamheden',
-            'bediening'          => 'Bediening',
-            'bar'                => 'Bar',
+            'catering'       => 'Catering',
+            'bar'            => 'Bar',
+            'bier_tappen'    => 'Bier tappen',
+            'borden_3'       => '3 Borden lopen',
+            'plateau'        => 'Plateau/dienblad',
+            'barista'        => 'Barista',
+            'ass_keuken'     => 'Assistent keuken',
+            'afwas'          => 'Afwas',
+            'schoonmaak'     => 'Schoonmaak',
+            'housekeeping'   => 'Housekeeping',
+            'orderpicker'    => 'Orderpicker/Productie',
+            'fysiek_zwaar'   => 'Fysiek zwaar werk',
+            'photonis'       => 'Photonis Roden',
+            'horeca_toppers' => 'Horeca toppers',
+            'rug'            => 'RUG',
+            'stijlzinnig'    => 'Stijlzinnig',
+            'cycloon'        => 'Cycloon',
+            'beijk_wolvega'  => 'Beijk draftbaan Wolvega',
+        );
+    }
+
+    /**
+     * Volledige vaardighedendefinitie voor Beheer-modal (met groepen en typen).
+     * Waarden worden opgeslagen als key→value in WP user meta 'psp_vaardigheden'.
+     */
+    public static function vaardigheden_definitie() {
+        return array(
+            // ─── Mobiliteit ───────────────────────────────────────────
+            'rijbewijs'      => array('label'=>'Rijbewijs',              'type'=>'select',
+                                     'opties'=>array(''=>'— geen —','nee'=>'Nee','S'=>'Schakel (S)','A'=>'Automaat (A)','BS'=>'Rijbewijs B + Schakel','BA'=>'Rijbewijs B + Automaat'),
+                                     'groep'=>'Mobiliteit'),
+            'eigen_auto'     => array('label'=>'Eigen auto/scooter',     'type'=>'checkbox', 'groep'=>'Mobiliteit'),
+            'auto_regelen'   => array('label'=>'Auto regelen',           'type'=>'checkbox', 'groep'=>'Mobiliteit'),
+            // ─── Taal ─────────────────────────────────────────────────
+            'nl_spreken'     => array('label'=>'Nederlands spreken',     'type'=>'checkbox', 'groep'=>'Taal'),
+            'nl_verstaan'    => array('label'=>'Nederlands verstaan',    'type'=>'checkbox', 'groep'=>'Taal'),
+            // ─── Horeca ───────────────────────────────────────────────
+            'bar'            => array('label'=>'Bar',                    'type'=>'checkbox', 'groep'=>'Horeca'),
+            'bier_tappen'    => array('label'=>'Bier tappen',            'type'=>'checkbox', 'groep'=>'Horeca'),
+            'borden_3'       => array('label'=>'3 Borden lopen',         'type'=>'checkbox', 'groep'=>'Horeca'),
+            'plateau'        => array('label'=>'Plateau/dienblad',       'type'=>'checkbox', 'groep'=>'Horeca'),
+            'barista'        => array('label'=>'Barista',                'type'=>'checkbox', 'groep'=>'Horeca'),
+            'ass_keuken'     => array('label'=>'Assistent keuken',       'type'=>'checkbox', 'groep'=>'Horeca'),
+            'afwas'          => array('label'=>'Afwas',                  'type'=>'checkbox', 'groep'=>'Horeca'),
+            // ─── Locaties / klanten ────────────────────────────────────
+            'catering'       => array('label'=>'Catering',               'type'=>'checkbox', 'groep'=>'Locaties'),
+            'photonis'       => array('label'=>'Photonis Roden',         'type'=>'checkbox', 'groep'=>'Locaties'),
+            'horeca_toppers' => array('label'=>'Horeca toppers',         'type'=>'checkbox', 'groep'=>'Locaties'),
+            'beijk_wolvega'  => array('label'=>'Beijk draftbaan Wolvega','type'=>'checkbox', 'groep'=>'Locaties'),
+            'rug'            => array('label'=>'RUG',                    'type'=>'checkbox', 'groep'=>'Locaties'),
+            'stijlzinnig'    => array('label'=>'Stijlzinnig',            'type'=>'checkbox', 'groep'=>'Locaties'),
+            'cycloon'        => array('label'=>'Cycloon',                'type'=>'checkbox', 'groep'=>'Locaties'),
+            // ─── Overig werk ───────────────────────────────────────────
+            'schoonmaak'     => array('label'=>'Schoonmaak',             'type'=>'checkbox', 'groep'=>'Overig werk'),
+            'housekeeping'   => array('label'=>'Housekeeping',           'type'=>'checkbox', 'groep'=>'Overig werk'),
+            'orderpicker'    => array('label'=>'Orderpicker/Productie',  'type'=>'checkbox', 'groep'=>'Overig werk'),
+            'fysiek_zwaar'   => array('label'=>'Fysiek zwaar werk',      'type'=>'checkbox', 'groep'=>'Overig werk'),
+            // ─── Opmerkingen ──────────────────────────────────────────
+            'opmerkingen'    => array('label'=>'Opmerkingen',            'type'=>'textarea','groep'=>'Opmerkingen'),
         );
     }
 
