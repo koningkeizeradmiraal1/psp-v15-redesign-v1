@@ -759,9 +759,7 @@ class PSP_Dashboard {
         // Haal alle unieke e-mails op uit beschikbaarheid
         global $wpdb;
         $emails = $wpdb->get_col(
-            "SELECT DISTINCT email FROM " . PSP_TABLE_BESCHIKBAARHEID . "
-             WHERE (voorkeur IS NULL OR voorkeur != 'excel-import')
-             ORDER BY email ASC"
+            "SELECT DISTINCT email FROM " . PSP_TABLE_BESCHIKBAARHEID . " ORDER BY email ASC"
         );
 
         $studenten = array();
