@@ -83,6 +83,22 @@ function psp_create_pages() {
     }
 }
 
+/* ── Noindex: deze site mag NOOIT geïndexeerd worden ── */
+add_action('init', function () {
+    // WordPress instelling: zoekmachines blokkeren
+    update_option('blog_public', 0);
+});
+
+// HTTP header op elke pagina
+add_action('send_headers', function () {
+    header('X-Robots-Tag: noindex, nofollow', true);
+});
+
+// Meta-tag in <head> als extra zekerheid
+add_action('wp_head', function () {
+    echo '<meta name="robots" content="noindex, nofollow">' . "\n";
+}, 1);  // priority 1 = zo vroeg mogelijk
+
 /* ── Includes laden ── */
 add_action('plugins_loaded', function () {
     require_once PSP_DIR . 'includes/class-psp-db.php';
