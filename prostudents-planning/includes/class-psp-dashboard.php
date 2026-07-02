@@ -846,15 +846,49 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        // Haal alle unieke e-mails op uit beschikbaarheid
         global $wpdb;
-        $emails = $wpdb->get_col(
-            "SELECT DISTINCT email FROM " . PSP_TABLE_BESCHIKBAARHEID . " ORDER BY email ASC"
-        );
-
         $studenten = array();
-        foreach ( $emails as $email ) {
-            $wp_user  = get_user_by( 'email', $email );
+        $gezien    = array(); // bijhouden welke emails al verwerkt zijn
+
+        // 1. WP-gebruikers met psp_student rol (échte accounts, geen @psplanning.nl)
+        $wp_studenten = get_users( array(
+            'role'    => 'psp_student',
+            'orderby' => 'display_name',
+            'order'   => 'ASC',
+            'fields'  => array('ID','display_name','user_email'),
+        ) );
+        foreach ( $wp_studenten as $u ) {
+            $email = $u->user_email;
+            // Sla nep-emails over
+            if ( substr( $email, -14 ) === '@psplanning.nl' ) continue;
+            $gezien[ strtolower($email) ] = true;
+            $naam_row = $wpdb->get_var( $wpdb->prepare(
+                "SELECT naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                $email
+            ) );
+            $vaardigheden = get_user_meta( $u->ID, 'psp_vaardigheden', true );
+            $studenten[] = array(
+                'email'        => $email,
+                'naam'         => $naam_row ?: $u->display_name,
+                'has_account'  => true,
+                'user_id'      => $u->ID,
+                'vaardigheden' => is_array($vaardigheden) ? $vaardigheden : array(),
+            );
+        }
+
+        // 2. Emails uit beschikbaarheid zonder WP-account (nog geen login),
+        //    ook geen @psplanning.nl
+        $emails_besch = $wpdb->get_col(
+            "SELECT DISTINCT email FROM " . PSP_TABLE_BESCHIKBAARHEID
+            . " WHERE email NOT LIKE '%@psplanning.nl' ORDER BY email ASC"
+        );
+        foreach ( $emails_besch as $email ) {
+            if ( isset( $gezien[ strtolower($email) ] ) ) continue; // al verwerkt via WP-users
+            $wp_user = get_user_by( 'email', $email );
+            if ( $wp_user ) {
+                // account bestaat maar heeft misschien andere rol - toon toch
+                $gezien[ strtolower($email) ] = true;
+            }
             $naam_row = $wpdb->get_var( $wpdb->prepare(
                 "SELECT naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " WHERE email = %s ORDER BY created_at DESC LIMIT 1",
                 $email
@@ -868,6 +902,12 @@ class PSP_Dashboard {
                 'vaardigheden' => is_array($vaardigheden) ? $vaardigheden : array(),
             );
         }
+
+        // Sorteer op naam
+        usort( $studenten, function($a, $b) {
+            return strcasecmp( $a['naam'], $b['naam'] );
+        });
+
         wp_send_json_success( $studenten );
     }
 
