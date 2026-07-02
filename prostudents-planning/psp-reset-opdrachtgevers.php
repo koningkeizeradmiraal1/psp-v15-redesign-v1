@@ -62,8 +62,27 @@ $opdrachtgevers = [
 
 $run = isset($_GET['run']) && $_GET['run'] === '1';
 
-// Controleer of tabel bestaat
+// Tabel aanmaken als die er nog niet is
 $tabel_bestaat = $wpdb->get_var("SHOW TABLES LIKE '{$tabel}'");
+if (!$tabel_bestaat) {
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    $charset = $wpdb->get_charset_collate();
+    $sql = "CREATE TABLE `{$tabel}` (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        naam varchar(200) NOT NULL,
+        contactpersoon varchar(150) DEFAULT '',
+        email varchar(150) DEFAULT '',
+        telefoon varchar(50) DEFAULT '',
+        adres varchar(255) DEFAULT '',
+        notities text DEFAULT '',
+        aangemaakt_op datetime DEFAULT CURRENT_TIMESTAMP,
+        bijgewerkt_op datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY naam (naam)
+    ) {$charset};";
+    dbDelta($sql);
+    $tabel_bestaat = $wpdb->get_var("SHOW TABLES LIKE '{$tabel}'");
+}
 
 echo '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">
 <title>PSP – Opdrachtgevers reset</title>
@@ -82,7 +101,7 @@ echo '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">
 echo '<h1>PSP – Opdrachtgevers reset</h1>';
 
 if (!$tabel_bestaat) {
-    echo '<p class="err">Tabel <code>' . esc_html($tabel) . '</code> bestaat nog niet. Deploy eerst de plugin-update.</p>';
+    echo '<p class="err">Tabel kon niet aangemaakt worden: <code>' . esc_html($wpdb->last_error) . '</code></p>';
     echo '</body></html>';
     exit;
 }

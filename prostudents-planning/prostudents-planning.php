@@ -9,7 +9,7 @@
  */
 defined('ABSPATH') || exit;
 
-define('PSP_VERSION', '1.5.0');
+define('PSP_VERSION', '1.6.0');
 define('PSP_DIR',     plugin_dir_path(__FILE__));
 define('PSP_URL',     plugin_dir_url(__FILE__));
 define('PSP_TABLE_BESCHIKBAARHEID', $GLOBALS['wpdb']->prefix . 'ps_beschikbaarheid');
