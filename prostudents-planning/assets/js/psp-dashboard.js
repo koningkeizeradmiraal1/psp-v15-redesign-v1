@@ -1602,6 +1602,75 @@
     return r.join('\n');
   }
 
+  /* ════ WB stuur modal openen (vanuit koppel-flow én kaartknop) ════ */
+  function toonWbStuurModal(opts) {
+    var dienstId = opts.dienst_id;
+    var email    = opts.student_email;
+    var naam     = opts.student_naam;
+    var og       = opts.opdrachtgever;
+
+    var modal = document.getElementById('psp-modal-wb-stuur');
+    if (!modal) return;
+    modal.dataset.dienstId      = dienstId;
+    modal.dataset.studentEmail  = email;
+    modal.dataset.opdrachtgever = og;
+
+    document.getElementById('psp-wbs-dienst-id').value     = dienstId;
+    document.getElementById('psp-wbs-student-email').value  = email;
+    document.getElementById('psp-wbs-opdrachtgever').value  = og;
+    document.getElementById('psp-wbs-aan').value            = naam + ' <' + email + '>';
+
+    var statusEl = document.getElementById('psp-wbs-status-info');
+    if (statusEl) statusEl.style.display = 'none';
+
+    ajax('psp_wb_templates_voor_og', { opdrachtgever: og, dienst_id: dienstId }, function (res) {
+      var templates = Array.isArray(res.templates) ? res.templates : [];
+      var bestaande = res.bestaande || null;
+      var templBtns = document.getElementById('psp-wbs-template-btns');
+      var templWrap = document.getElementById('psp-wbs-template-keuze');
+
+      if (templates.length && templBtns && templWrap) {
+        var ctx = { naam: naam, og: og, bevestig_link: '' };
+        templBtns.innerHTML = templates.map(function (t) {
+          return '<button type="button" class="psp-btn-sm psp-btn-ghost psp-wbs-templ-btn" data-id="' + t.id + '">' + esc(t.naam) + '</button>';
+        }).join('');
+        templWrap.style.display = '';
+        templBtns.querySelectorAll('.psp-wbs-templ-btn').forEach(function (tb) {
+          tb.addEventListener('click', function () {
+            var t = templates.find(function (x) { return String(x.id) === tb.dataset.id; });
+            if (!t) return;
+            document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(t.onderwerp, ctx);
+            document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(t.inhoud, ctx);
+          });
+        });
+      } else if (templWrap) {
+        templWrap.style.display = 'none';
+      }
+
+      if (bestaande) {
+        document.getElementById('psp-wbs-onderwerp').value = bestaande.onderwerp || '';
+        document.getElementById('psp-wbs-inhoud').value    = bestaande.inhoud    || '';
+        if (statusEl) {
+          statusEl.style.display    = '';
+          statusEl.style.background = bestaande.status === 'bevestigd' ? '#f0fdf4' : '#fffbeb';
+          statusEl.style.color      = bestaande.status === 'bevestigd' ? '#15803d' : '#92400e';
+          statusEl.textContent = bestaande.status === 'bevestigd'
+            ? '\u2713 Student heeft bevestigd op ' + (bestaande.bevestigd_op || '').substring(0, 16)
+            : '\u{1F4E7} Eerder verstuurd op ' + (bestaande.verzonden_op || '').substring(0, 16);
+        }
+      } else {
+        document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
+        document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
+      }
+
+      modal.style.display = 'flex';
+    }, function () {
+      document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
+      document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
+      modal.style.display = 'flex';
+    });
+  }
+
   /* ════════════════════════════════════════════════════
      WERKBEVESTIGING VERSTUREN — modal init
   ════════════════════════════════════════════════════ */
@@ -1615,78 +1684,15 @@
         });
       });
 
-      // Open modal via kaartknop (event delegation)
+      // Open modal via kaartknop (event delegation) — roept toonWbStuurModal aan
       document.body.addEventListener('click', function (e) {
         var btn = e.target.closest('.psp-wb-stuur-kaart-btn');
         if (!btn) return;
-
-        var dienstId = btn.dataset.dienstId;
-        var email    = btn.dataset.email;
-        var naam     = btn.dataset.naam;
-        var og       = btn.dataset.og;
-
-        // Sla context op in hidden fields + modal dataset
-        var modal = document.getElementById('psp-modal-wb-stuur');
-        modal.dataset.dienstId      = dienstId;
-        modal.dataset.studentEmail  = email;
-        modal.dataset.opdrachtgever = og;
-
-        document.getElementById('psp-wbs-dienst-id').value     = dienstId;
-        document.getElementById('psp-wbs-student-email').value  = email;
-        document.getElementById('psp-wbs-opdrachtgever').value  = og;
-        document.getElementById('psp-wbs-aan').value            = naam + ' <' + email + '>';
-
-        var statusEl = document.getElementById('psp-wbs-status-info');
-        if (statusEl) statusEl.style.display = 'none';
-
-        // Laad templates voor deze opdrachtgever
-        ajax('psp_wb_templates_voor_og', { opdrachtgever: og, dienst_id: dienstId }, function (res) {
-          var templates  = Array.isArray(res.templates) ? res.templates : [];
-          var bestaande  = res.bestaande || null;
-          var templBtns  = document.getElementById('psp-wbs-template-btns');
-          var templWrap  = document.getElementById('psp-wbs-template-keuze');
-
-          if (templates.length && templBtns && templWrap) {
-            var ctx = { naam: naam, og: og, bevestig_link: '' };
-            templBtns.innerHTML = templates.map(function (t) {
-              return '<button type="button" class="psp-btn-sm psp-btn-ghost psp-wbs-templ-btn" '
-                + 'data-id="' + t.id + '">' + esc(t.naam) + '</button>';
-            }).join('');
-            templWrap.style.display = '';
-
-            templBtns.querySelectorAll('.psp-wbs-templ-btn').forEach(function (tb) {
-              tb.addEventListener('click', function () {
-                var t = templates.find(function (x) { return String(x.id) === tb.dataset.id; });
-                if (!t) return;
-                document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(t.onderwerp, ctx);
-                document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(t.inhoud, ctx);
-              });
-            });
-          } else if (templWrap) {
-            templWrap.style.display = 'none';
-          }
-
-          if (bestaande) {
-            document.getElementById('psp-wbs-onderwerp').value = bestaande.onderwerp || '';
-            document.getElementById('psp-wbs-inhoud').value    = bestaande.inhoud    || '';
-            if (statusEl) {
-              statusEl.style.display  = '';
-              statusEl.style.background = bestaande.status === 'bevestigd' ? '#f0fdf4' : '#fffbeb';
-              statusEl.style.color      = bestaande.status === 'bevestigd' ? '#15803d' : '#92400e';
-              statusEl.textContent = bestaande.status === 'bevestigd'
-                ? '✓ Student heeft bevestigd op ' + (bestaande.bevestigd_op || '').substring(0, 16)
-                : '📧 Eerder verstuurd op ' + (bestaande.verzonden_op || '').substring(0, 16);
-            }
-          } else {
-            document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
-            document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
-          }
-
-          modal.style.display = 'flex';
-        }, function () {
-          document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
-          document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
-          modal.style.display = 'flex';
+        toonWbStuurModal({
+          dienst_id:     btn.dataset.dienstId,
+          student_email: btn.dataset.email,
+          student_naam:  btn.dataset.naam,
+          opdrachtgever: btn.dataset.og,
         });
       });
 
