@@ -103,7 +103,6 @@ class PSP_Dashboard {
 
   <!-- TAB: Rooster -->
   <div id="psp-tab-rooster" class="psp-tab-panel">
-    <div id="psp-stats-bar" class="psp-stats-bar"></div>
     <div class="psp-rooster-wrap">
       <div class="psp-sidebar" id="psp-diensten-sidebar">
         <div class="psp-sidebar-header">
