@@ -17,7 +17,7 @@ if (($_GET['sleutel'] ?? '') !== SLEUTEL) {
 }
 
 // WordPress laden
-$wp_load = __DIR__ . '/../../../../wp-load.php';
+$wp_load = __DIR__ . '/../../../wp-load.php';
 if (!file_exists($wp_load)) {
     exit('wp-load.php niet gevonden op: ' . $wp_load);
 }
