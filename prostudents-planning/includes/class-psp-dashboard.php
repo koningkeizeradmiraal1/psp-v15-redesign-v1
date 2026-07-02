@@ -998,99 +998,243 @@ class PSP_Dashboard {
         wp_send_json_success( array( 'message' => '\u2713 Vaardigheden opgeslagen.' ) );
     }
 
-    /* ─────────────── AJAX: werkbevestiging templates ─────────────── */
-
+    /* ────
+    /* ─────────────── AJAX: WB template laden ─────────────── */
     public static function ajax_wb_laad() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        $og = sanitize_text_field( isset($_POST['og']) ? $_POST['og'] : '' );
-        wp_send_json_success( array(
-            'rows' => PSP_DB::get_wb_templates( $og ),
-            'ogs'  => PSP_DB::get_wb_ogs(),
-        ) );
+        wp_send_json_success( PSP_DB::get_wb_templates() );
     }
 
+    /* ─────────────── AJAX: WB template opslaan ─────────────── */
     public static function ajax_wb_opslaan() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        $id = PSP_DB::save_wb_template( $_POST );
-        if ( ! $id ) wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
-        wp_send_json_success( array( 'id' => $id, 'message' => 'Template opgeslagen.' ) );
+
+        $id            = (int)   ( $_POST['wb_id']        ?? 0 );
+        $opdrachtgever = sanitize_text_field( $_POST['opdrachtgever'] ?? '' );
+        $naam          = sanitize_text_field( $_POST['naam']          ?? '' );
+        $onderwerp     = sanitize_text_field( $_POST['onderwerp']     ?? '' );
+        $inhoud        = sanitize_textarea_field( $_POST['inhoud']    ?? '' );
+
+        if ( ! $opdrachtgever || ! $naam ) wp_send_json_error( array( 'message' => 'Opdrachtgever en naam zijn verplicht.' ) );
+
+        $data = compact( 'opdrachtgever', 'naam', 'onderwerp', 'inhoud' );
+        if ( $id ) $data['wb_id'] = $id;
+        $ok = PSP_DB::save_wb_template( $data );
+        if ( ! $ok ) wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
+        wp_send_json_success( array( 'message' => "✓ Template opgeslagen.", 'templates' => PSP_DB::get_wb_templates() ) );
     }
 
+    /* ─────────────── AJAX: WB template verwijderen ─────────────── */
     public static function ajax_wb_verwijder() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        $id = (int) ( isset($_POST['wb_id']) ? $_POST['wb_id'] : 0 );
+        $id = (int) ( $_POST['wb_id'] ?? 0 );
         if ( ! $id ) wp_send_json_error();
         PSP_DB::delete_wb_template( $id );
-        wp_send_json_success( array( 'message' => 'Template verwijderd.' ) );
+        wp_send_json_success( array( 'message' => 'Template verwijderd.', 'templates' => PSP_DB::get_wb_templates() ) );
     }
-
 
     /* ─────────────── AJAX: WB templates voor opdrachtgever ─────────────── */
     public static function ajax_wb_templates_voor_og() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        $og  = sanitize_text_field( isset($_POST['opdrachtgever']) ? $_POST['opdrachtgever'] : '' );
-        $did = (int) ( isset($_POST['dienst_id']) ? $_POST['dienst_id'] : 0 );
+
+        $og       = sanitize_text_field( $_POST['opdrachtgever'] ?? '' );
+        $dienst_id = (int) ( $_POST['dienst_id'] ?? 0 );
+
         $templates = PSP_DB::get_wb_templates( $og );
-        $bestaande = $did ? PSP_DB::get_wb_voor_dienst( $did ) : null;
+        $bestaande = $dienst_id ? PSP_DB::get_wb_voor_dienst( $dienst_id ) : null;
+
+        $bestaande_data = null;
+        if ( $bestaande ) {
+            $dienst = PSP_DB::get_dienst_by_id( $dienst_id );
+            $bestaande_data = array(
+                'onderwerp'    => $bestaande->onderwerp,
+                'inhoud'       => $bestaande->inhoud,
+                'status'       => $bestaande->status,
+                'verzonden_op' => $bestaande->verzonden_op,
+                'bevestigd_op' => $bestaande->bevestigd_op,
+            );
+            // Vervang placeholders
+            if ( $dienst ) {
+                $datum_nl = date_i18n( 'l j F Y', strtotime( $dienst->datum ) );
+                $replace  = array(
+                    '{naam}'          => '',
+                    '{datum}'         => $datum_nl,
+                    '{van}'           => substr( $dienst->tijdstip_van, 0, 5 ),
+                    '{tot}'           => substr( $dienst->tijdstip_tot, 0, 5 ),
+                    '{opdrachtgever}' => $dienst->opdrachtgever,
+                    '{locatie}'       => $dienst->locatie   ?: '',
+                    '{type_werk}'     => $dienst->type_werk ?: '',
+                    '{bevestig_link}' => '',
+                );
+                $bestaande_data['inhoud']   = str_replace( array_keys($replace), array_values($replace), $bestaande_data['inhoud'] );
+                $bestaande_data['onderwerp'] = str_replace( array_keys($replace), array_values($replace), $bestaande_data['onderwerp'] );
+            }
+        }
+
         wp_send_json_success( array(
             'templates' => $templates,
-            'bestaande' => $bestaande,
+            'bestaande' => $bestaande_data,
         ) );
     }
 
-    /* ─────────────── AJAX: werkbevestiging versturen / opnieuw versturen ─────────────── */
+    /* ─────────────── AJAX: werkbevestiging versturen ─────────────── */
     public static function ajax_wb_stuur() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        $dienst_id     = (int) ( isset($_POST['dienst_id'])     ? $_POST['dienst_id']     : 0 );
-        $student_email = sanitize_email( isset($_POST['student_email']) ? $_POST['student_email'] : '' );
-        $opdrachtgever = sanitize_text_field( isset($_POST['opdrachtgever']) ? $_POST['opdrachtgever'] : '' );
-        $onderwerp     = sanitize_text_field( isset($_POST['onderwerp'])     ? $_POST['onderwerp']     : '' );
-        $inhoud        = wp_kses_post( isset($_POST['inhoud']) ? $_POST['inhoud'] : '' );
+        $dienst_id     = (int)   ( $_POST['dienst_id']     ?? 0 );
+        $student_email = sanitize_email( $_POST['student_email'] ?? '' );
+        $opdrachtgever = sanitize_text_field( $_POST['opdrachtgever'] ?? '' );
+        $onderwerp     = sanitize_text_field( $_POST['onderwerp']     ?? '' );
+        $inhoud        = sanitize_textarea_field( $_POST['inhoud']    ?? '' );
 
-        if ( ! $dienst_id || ! $student_email ) {
-            wp_send_json_error( array( 'message' => 'Onvolledige gegevens.' ) );
+        if ( ! $dienst_id || ! $student_email ) wp_send_json_error( array( 'message' => 'Ontbrekende gegevens.' ) );
+
+        $dienst = PSP_DB::get_dienst_by_id( $dienst_id );
+        if ( ! $dienst ) wp_send_json_error( array( 'message' => 'Dienst niet gevonden.' ) );
+
+        // Haal studentnaam op via beschikbaarheid
+        global $wpdb;
+        $student_naam = $wpdb->get_var( $wpdb->prepare(
+            "SELECT naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " WHERE email = %s LIMIT 1", $student_email
+        ) );
+        if ( ! $student_naam ) {
+            $u = get_user_by( 'email', $student_email );
+            $student_naam = $u ? $u->display_name : $student_email;
         }
 
-        // Sla op in DB (upsert)
-        $wb_id = PSP_DB::save_werkbevestiging( $_POST );
-        if ( ! $wb_id ) {
-            wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
-        }
+        $datum_nl = date_i18n( 'l j F Y', strtotime( $dienst->datum ) );
 
-        // Stuur e-mail naar student
-        $subject = $onderwerp ?: 'Werkbevestiging ProStudents';
-        $headers = array( 'Content-Type: text/html; charset=UTF-8' );
-        $verzonden = wp_mail( $student_email, $subject, nl2br( $inhoud ), $headers );
+        // Bevestigingslink genereren
+        $bevestig_token = wp_generate_password( 32, false );
+        $bevestig_link  = home_url( '/mijn-rooster/?wb_bevestig=' . $bevestig_token );
 
-        if ( $verzonden ) {
-            wp_send_json_success( array( 'message' => '\u2713 Werkbevestiging verstuurd naar ' . $student_email . '.' ) );
-        } else {
-            wp_send_json_error( array( 'message' => 'Opgeslagen, maar e-mail versturen mislukt.' ) );
-        }
+        $replace = array(
+            '{naam}'          => $student_naam,
+            '{datum}'         => $datum_nl,
+            '{van}'           => substr( $dienst->tijdstip_van, 0, 5 ),
+            '{tot}'           => substr( $dienst->tijdstip_tot, 0, 5 ),
+            '{opdrachtgever}' => $dienst->opdrachtgever,
+            '{locatie}'       => $dienst->locatie   ?: '',
+            '{type_werk}'     => $dienst->type_werk ?: '',
+            '{bevestig_link}' => $bevestig_link,
+        );
+        $inhoud_filled   = str_replace( array_keys($replace), array_values($replace), $inhoud );
+        $onderwerp_filled = str_replace( array_keys($replace), array_values($replace), $onderwerp );
+
+        // WB opslaan in DB
+        $wb_id = PSP_DB::save_werkbevestiging( array(
+            'dienst_id'     => $dienst_id,
+            'student_email' => $student_email,
+            'opdrachtgever' => $dienst->opdrachtgever,
+            'onderwerp'     => $onderwerp_filled,
+            'inhoud'        => $inhoud_filled,
+            'status'        => 'verzonden',
+        ) );
+
+        // Mail versturen
+        $headers = array(
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ProStudents <info@prostudents.nl>',
+        );
+        $ok = wp_mail( $student_email, $onderwerp_filled, $inhoud_filled, $headers );
+
+        if ( ! $ok ) wp_send_json_error( array( 'message' => 'Mail versturen mislukt.' ) );
+
+        wp_send_json_success( array( 'message' => "✓ Werkbevestiging verstuurd naar {$student_naam}." ) );
     }
 
-    /* ─────────────── AJAX: bevestigingen overzicht ─────────────── */
+    /* ─────────────── AJAX: WB bevestigingen overzicht ─────────────── */
     public static function ajax_wb_bevestigingen() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        $rows = PSP_DB::get_nieuwe_bevestigingen();
-        $out  = array();
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            "SELECT wb.*, b.naam as student_naam
+             FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " wb
+             LEFT JOIN " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.email = wb.student_email
+             ORDER BY wb.verzonden_op DESC
+             LIMIT 100"
+        );
+        $out = array();
         foreach ( $rows as $r ) {
             $out[] = array(
+                'id'            => (int) $r->id,
+                'dienst_id'     => (int) $r->dienst_id,
                 'student_email' => $r->student_email,
+                'student_naam'  => $r->student_naam ?: $r->student_email,
                 'opdrachtgever' => $r->opdrachtgever,
-                'datum'         => isset($r->datum) ? $r->datum : '',
-                'bevestigd_op'  => isset($r->bevestigd_op) ? $r->bevestigd_op : '',
+                'datum'         => $r->datum,
+                'status'        => $r->status,
+                'verzonden_op'  => $r->verzonden_op,
+                'bevestigd_op'  => $r->bevestigd_op,
             );
         }
         wp_send_json_success( $out );
+    }
+
+    /* ─────────────── AJAX: urenoverzicht ─────────────── */
+    public static function ajax_urenoverzicht() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $van = sanitize_text_field( $_POST['van'] ?? date('Y-m-01') );
+        $tot = sanitize_text_field( $_POST['tot'] ?? date('Y-m-t') );
+
+        global $wpdb;
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT b.naam, b.email, d.opdrachtgever, d.datum,
+                    d.tijdstip_van, d.tijdstip_tot, d.type_werk
+             FROM " . PSP_TABLE_KOPPELINGEN   . " k
+             JOIN " . PSP_TABLE_DIENSTEN       . " d ON d.id = k.dienst_id
+             JOIN " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
+             WHERE d.datum BETWEEN %s AND %s
+             ORDER BY b.naam ASC, d.datum ASC",
+            $van, $tot
+        ) );
+
+        $per_student = array();
+        foreach ( $rows as $r ) {
+            $key = $r->email;
+            if ( ! isset($per_student[$key]) ) {
+                $per_student[$key] = array(
+                    'naam'          => $r->naam,
+                    'email'         => $r->email,
+                    'totaal_uren'   => 0,
+                    'diensten'      => array(),
+                );
+            }
+            // Bereken uren
+            $van_ts = strtotime( $r->datum . ' ' . $r->tijdstip_van );
+            $tot_ts = strtotime( $r->datum . ' ' . $r->tijdstip_tot );
+            $uren   = $tot_ts > $van_ts ? round( ( $tot_ts - $van_ts ) / 3600, 2 ) : 0;
+            $per_student[$key]['totaal_uren'] += $uren;
+            $per_student[$key]['diensten'][]   = array(
+                'datum'         => $r->datum,
+                'opdrachtgever' => $r->opdrachtgever,
+                'van'           => substr( $r->tijdstip_van, 0, 5 ),
+                'tot'           => substr( $r->tijdstip_tot, 0, 5 ),
+                'uren'          => $uren,
+                'type_werk'     => $r->type_werk,
+            );
+        }
+        wp_send_json_success( array_values( $per_student ) );
+    }
+
+    /* ─────────────── AJAX: welkomstmail sturen ─────────────── */
+    public static function ajax_stuur_welkomstmail() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id ) wp_send_json_error( array( 'message' => 'Geen gebruiker opgegeven.' ) );
+        $ok = PSP_Mail::stuur_welkomstmail( $user_id );
+        if ( ! $ok ) wp_send_json_error( array( 'message' => 'Mail versturen mislukt.' ) );
+        wp_send_json_success( array( 'message' => "✓ Welkomstmail verstuurd." ) );
     }
 
     /* ─────────────── AJAX: aanmeldingen ophalen ─────────────── */
@@ -1098,21 +1242,15 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        $users = get_users( array(
-            'role'    => 'psp_aanvraag',
-            'orderby' => 'registered',
-            'order'   => 'DESC',
-            'fields'  => array('ID','display_name','user_email','user_registered'),
-        ) );
-
-        $out = array();
+        $users = get_users( array( 'role' => 'psp_aanvraag', 'number' => -1 ) );
+        $out   = array();
         foreach ( $users as $u ) {
             $out[] = array(
-                'id'         => $u->ID,
-                'naam'       => $u->display_name,
-                'email'      => $u->user_email,
-                'aangemeld'  => substr($u->user_registered, 0, 10),
-                'telefoon'   => get_user_meta($u->ID, 'psp_telefoon', true) ?: '',
+                'user_id'  => $u->ID,
+                'naam'     => $u->display_name,
+                'email'    => $u->user_email,
+                'datum'    => get_user_meta( $u->ID, 'psp_aanmelddatum', true ) ?: substr( $u->user_registered, 0, 10 ),
+                'telefoon' => get_user_meta( $u->ID, 'psp_telefoon', true ) ?: '',
             );
         }
         wp_send_json_success( $out );
@@ -1124,14 +1262,14 @@ class PSP_Dashboard {
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
         $user_id = (int) ( $_POST['user_id'] ?? 0 );
-        $user    = get_user_by('id', $user_id);
-        if ( ! $user ) wp_send_json_error( array('message' => 'Gebruiker niet gevonden.') );
+        $user    = get_user_by( 'id', $user_id );
+        if ( ! $user ) wp_send_json_error( array( 'message' => 'Gebruiker niet gevonden.' ) );
 
-        $user->set_role('psp_student');
+        $user->set_role( 'psp_student' );
         delete_user_meta( $user_id, 'psp_status' );
         PSP_Mail::stuur_welkomstmail( $user_id );
 
-        wp_send_json_success( array('message' => '✓ ' . $user->display_name . ' goedgekeurd. Welkomstmail verstuurd.') );
+        wp_send_json_success( array( 'message' => "✓ {$user->display_name} goedgekeurd. Welkomstmail verstuurd." ) );
     }
 
     /* ─────────────── AJAX: aanmelding afwijzen ─────────────── */
@@ -1140,30 +1278,14 @@ class PSP_Dashboard {
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
         $user_id = (int) ( $_POST['user_id'] ?? 0 );
-        $user    = get_user_by('id', $user_id);
-        if ( ! $user ) wp_send_json_error( array('message' => 'Gebruiker niet gevonden.') );
+        $user    = get_user_by( 'id', $user_id );
+        if ( ! $user ) wp_send_json_error( array( 'message' => 'Gebruiker niet gevonden.' ) );
 
         $naam = $user->display_name;
         require_once ABSPATH . 'wp-admin/includes/user.php';
         wp_delete_user( $user_id );
 
-        wp_send_json_success( array('message' => $naam . ' afgewezen en verwijderd.') );
-    }
-
-    /* ─────────────── AJAX: welkomstmail versturen ─────────────── */
-    public static function ajax_stuur_welkomstmail() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
-        $user_id = (int) ( $_POST['user_id'] ?? 0 );
-        if ( ! $user_id ) wp_send_json_error( array('message' => 'Geen gebruiker opgegeven.') );
-
-        $ok = PSP_Mail::stuur_welkomstmail( $user_id );
-        if ( $ok ) {
-            wp_send_json_success( array('message' => '✓ Welkomstmail verstuurd.') );
-        } else {
-            wp_send_json_error( array('message' => 'Versturen mislukt. Controleer de mailconfiguratie.') );
-        }
+        wp_send_json_success( array( 'message' => "{$naam} afgewezen en verwijderd." ) );
     }
 
     /* ─────────────── AJAX: opdrachtgevers ophalen ─────────────── */
@@ -1178,46 +1300,29 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        $id = PSP_DB::save_opdrachtgever( $_POST );
-        if ( ! $id ) wp_send_json_error( array('message' => 'Opslaan mislukt. Naam is mogelijk al in gebruik.') );
-        wp_send_json_success( array('id' => $id, 'message' => '✓ Opdrachtgever opgeslagen.') );
+        $id   = (int) ( $_POST['id'] ?? 0 );
+        $data = array(
+            'naam'          => sanitize_text_field( $_POST['naam']          ?? '' ),
+            'contactpersoon'=> sanitize_text_field( $_POST['contactpersoon']?? '' ),
+            'email'         => sanitize_email(      $_POST['email']         ?? '' ),
+            'telefoon'      => sanitize_text_field( $_POST['telefoon']      ?? '' ),
+            'adres'         => sanitize_text_field( $_POST['adres']         ?? '' ),
+            'notities'      => sanitize_textarea_field( $_POST['notities']  ?? '' ),
+        );
+        if ( ! $data['naam'] ) wp_send_json_error( array( 'message' => 'Naam is verplicht.' ) );
+        if ( $id ) $data['id'] = $id;
+        $ok = PSP_DB::save_opdrachtgever( $data );
+        if ( $ok === false ) wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
+        wp_send_json_success( array( 'message' => "✓ Opgeslagen.", 'lijst' => PSP_DB::get_opdrachtgevers() ) );
     }
 
     /* ─────────────── AJAX: opdrachtgever verwijderen ─────────────── */
     public static function ajax_delete_opdrachtgever() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
         $id = (int) ( $_POST['id'] ?? 0 );
         if ( ! $id ) wp_send_json_error();
         PSP_DB::delete_opdrachtgever( $id );
-        wp_send_json_success( array('message' => 'Opdrachtgever verwijderd.') );
+        wp_send_json_success( array( 'message' => 'Verwijderd.', 'lijst' => PSP_DB::get_opdrachtgevers() ) );
     }
-
-    /* ─────────────── AJAX: urenoverzicht rapportage ─────────────── */
-    public static function ajax_urenoverzicht() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
-        global $wpdb;
-        $jaar = (int) ( isset($_POST['jaar']) ? $_POST['jaar'] : date('Y') );
-        $tb_d = PSP_TABLE_DIENSTEN;
-        $tb_k = PSP_TABLE_KOPPELINGEN;
-
-        $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT k.student_email,
-                    d.opdrachtgever,
-                    COUNT(*) AS aantal_diensten,
-                    ROUND(SUM(TIMESTAMPDIFF(MINUTE, d.tijdstip_van, d.tijdstip_tot)) / 60.0, 1) AS uren
-             FROM {$tb_k} k
-             JOIN {$tb_d} d ON d.id = k.dienst_id
-             WHERE YEAR(d.datum) = %d
-             GROUP BY k.student_email, d.opdrachtgever
-             ORDER BY k.student_email, d.opdrachtgever",
-            $jaar
-        ), ARRAY_A );
-
-        wp_send_json_success( $rows ? $rows : array() );
-    }
-
 }
