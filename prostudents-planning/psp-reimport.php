@@ -5748,7 +5748,8 @@ $besch_id_map = [];
 $besch_ok = 0;
 foreach ($beschikbaarheid_data as $idx => $b) {
     [$naam, $week_start, $klant, $status_oo, $dagen] = $b;
-    $email = $naam_to_email[$naam] ?? ($naam . '@psplanning.nl');
+    $email = $naam_to_email[$naam] ?? '';
+    if ($email === '') continue; // sla rijen zonder e-mail over — geen nep-adressen
     $ok = $wpdb->insert(TB_BESCH, [
         'naam'       => $naam,
         'email'      => $email,
