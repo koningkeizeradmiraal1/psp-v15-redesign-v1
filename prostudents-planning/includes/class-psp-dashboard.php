@@ -1158,6 +1158,22 @@ class PSP_Dashboard {
     public static function ajax_get_opdrachtgevers() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        // Auto-importeer unieke namen uit ps_diensten die nog niet in ps_opdrachtgevers staan
+        global $wpdb;
+        $bestaande_namen = $wpdb->get_col(
+            "SELECT naam FROM " . PSP_TABLE_OPDRACHTGEVERS
+        );
+        $dienst_namen = $wpdb->get_col(
+            "SELECT DISTINCT opdrachtgever FROM " . PSP_TABLE_DIENSTEN
+            . " WHERE opdrachtgever != '' ORDER BY opdrachtgever ASC"
+        );
+        foreach ( $dienst_namen as $naam ) {
+            if ( ! in_array( $naam, $bestaande_namen, true ) ) {
+                PSP_DB::save_opdrachtgever( array( 'naam' => $naam ) );
+            }
+        }
+
         wp_send_json_success( PSP_DB::get_opdrachtgevers() );
     }
 
