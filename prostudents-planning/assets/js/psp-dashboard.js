@@ -969,10 +969,10 @@
           + '<td><strong>' + esc(r.naam) + '</strong></td>'
           + '<td>' + esc(r.email) + '</td>'
           + '<td>' + esc(r.telefoon || '—') + '</td>'
-          + '<td>' + esc(r.aangemeld) + '</td>'
+          + '<td>' + esc(r.datum || '') + '</td>'
           + '<td style="white-space:nowrap;display:flex;gap:4px">'
-          + '<button class="psp-btn-sm psp-btn-primary psp-goedkeur-btn" data-id="' + r.id + '" data-naam="' + esc(r.naam) + '">&#10003; Goedkeuren</button>'
-          + '<button class="psp-btn-sm psp-btn-danger psp-afwijzen-btn" data-id="' + r.id + '" data-naam="' + esc(r.naam) + '">&#10005; Afwijzen</button>'
+          + '<button class="psp-btn-sm psp-btn-primary psp-goedkeur-btn" data-id="' + r.user_id + '" data-naam="' + esc(r.naam) + '">&#10003; Goedkeuren</button>'
+          + '<button class="psp-btn-sm psp-btn-danger psp-afwijzen-btn" data-id="' + r.user_id + '" data-naam="' + esc(r.naam) + '">&#10005; Afwijzen</button>'
           + '</td></tr>';
       });
       html += '</tbody></table>';
@@ -986,6 +986,7 @@
             toast(res.message, 'success');
             laadAanmeldingen();
             laadAanmeldingenBadge();
+            laadStudentenTab();
           }, function (msg) { toast(msg || 'Mislukt.', 'error'); btn.disabled = false; btn.textContent = '✓ Goedkeuren'; });
         });
       });
