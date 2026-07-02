@@ -109,6 +109,12 @@ add_action('plugins_loaded', function () {
     require_once PSP_DIR . 'includes/class-psp-dashboard.php';
     require_once PSP_DIR . 'includes/class-psp-student.php';
 
+    // Auto-migratie: nieuwe DB-versie → tabellen aanmaken/bijwerken
+    if ( get_option('psp_db_version') !== PSP_VERSION ) {
+        PSP_DB::create_tables();
+        update_option('psp_db_version', PSP_VERSION);
+    }
+
     PSP_Frontend::init();
     PSP_Admin::init();
     PSP_Dashboard::init();

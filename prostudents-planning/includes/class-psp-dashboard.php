@@ -31,15 +31,6 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_get_opdrachtgevers',     [self::class, 'ajax_get_opdrachtgevers']);
         add_action('wp_ajax_psp_save_opdrachtgever',     [self::class, 'ajax_save_opdrachtgever']);
         add_action('wp_ajax_psp_delete_opdrachtgever',   [self::class, 'ajax_delete_opdrachtgever']);
-
-        // Zorg dat nieuwe DB-tabellen aangemaakt worden zonder heractivatie
-        add_action('plugins_loaded', function () {
-            if ( get_option('psp_db_version') !== PSP_VERSION ) {
-                require_once PSP_DIR . 'includes/class-psp-db.php';
-                PSP_DB::create_tables();
-                update_option('psp_db_version', PSP_VERSION);
-            }
-        }, 5 );
     }
 
     /* ─────────────── Shortcode ─────────────── */
@@ -50,8 +41,28 @@ class PSP_Dashboard {
         if ( ! current_user_can('edit_posts') ) {
             return '<p class="psp-dash-login">Je hebt geen toegang tot dit dashboard.</p>';
         }
+        // Opdrachtgever namen ophalen voor datalist autocomplete
+        global $wpdb;
+        $og_namen = [];
+        $tabel_ok = $wpdb->get_var( "SHOW TABLES LIKE '" . PSP_TABLE_OPDRACHTGEVERS . "'" );
+        if ( $tabel_ok ) {
+            $og_namen = $wpdb->get_col( "SELECT naam FROM " . PSP_TABLE_OPDRACHTGEVERS . " ORDER BY naam ASC" );
+        }
+        if ( empty( $og_namen ) ) {
+            $og_namen = $wpdb->get_col(
+                "SELECT DISTINCT opdrachtgever FROM " . PSP_TABLE_DIENSTEN
+                . " WHERE opdrachtgever != '' ORDER BY opdrachtgever ASC"
+            );
+        }
+
         ob_start(); ?>
 <div id="psp-dashboard" class="psp-dash">
+
+<datalist id="psp-og-datalist">
+<?php foreach ( $og_namen as $nm ) : ?>
+  <option value="<?php echo esc_attr( $nm ); ?>">
+<?php endforeach; ?>
+</datalist>
 
   <!-- Header -->
   <div class="psp-dash-header">
@@ -346,7 +357,7 @@ class PSP_Dashboard {
       <div class="psp-modal-body">
         <div class="psp-form-row2">
           <div class="psp-field"><label>Naam dienst *</label><input type="text" name="titel" required placeholder="bijv. Bediening diner"></div>
-          <div class="psp-field"><label>Opdrachtgever *</label><input type="text" name="opdrachtgever" required placeholder="Bedrijfsnaam"></div>
+          <div class="psp-field"><label>Opdrachtgever *</label><input type="text" name="opdrachtgever" list="psp-og-datalist" required placeholder="Kies of typ een opdrachtgever"></div>
         </div>
         <div class="psp-form-row3">
           <div class="psp-field"><label>Datum *</label><input type="date" name="datum" required></div>
@@ -528,7 +539,7 @@ class PSP_Dashboard {
         <div class="psp-form-row2">
           <div class="psp-field">
             <label>Opdrachtgever *</label>
-            <input type="text" name="opdrachtgever" id="psp-wb-opdrachtgever" required placeholder="Bedrijfsnaam">
+            <input type="text" name="opdrachtgever" id="psp-wb-opdrachtgever" list="psp-og-datalist" required placeholder="Kies of typ een opdrachtgever">
           </div>
           <div class="psp-field">
             <label>Template naam *</label>
