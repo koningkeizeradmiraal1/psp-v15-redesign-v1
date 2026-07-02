@@ -1128,6 +1128,7 @@ class PSP_Dashboard {
         if ( ! $user ) wp_send_json_error( array('message' => 'Gebruiker niet gevonden.') );
 
         $user->set_role('psp_student');
+        delete_user_meta( $user_id, 'psp_status' );
         PSP_Mail::stuur_welkomstmail( $user_id );
 
         wp_send_json_success( array('message' => '✓ ' . $user->display_name . ' goedgekeurd. Welkomstmail verstuurd.') );

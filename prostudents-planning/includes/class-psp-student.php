@@ -15,9 +15,8 @@ class PSP_Student {
                  . '<a href="' . esc_url( wp_login_url( get_permalink() ) ) . '" class="psp-rooster-btn">Inloggen</a></div>';
         }
 
-        // Aanvraag nog in behandeling?
-        $psp_status = get_user_meta( get_current_user_id(), 'psp_status', true );
-        if ( $psp_status === 'aanvraag' ) {
+        // Aanvraag nog in behandeling? Check op rol (niet op meta, die kan achterblijven)
+        if ( in_array( 'psp_aanvraag', (array) wp_get_current_user()->roles, true ) ) {
             return '<div class="psp-rooster-wrap">'
                  . '<div class="psp-aanvraag-pending">'
                  . '<div class="psp-aanvraag-icon">&#9203;</div>'
