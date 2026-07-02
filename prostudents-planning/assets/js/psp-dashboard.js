@@ -83,6 +83,7 @@
     ajax('psp_week_data', { week_start: fmt(state.week) }, function (data) {
       state.data = data; state.selectedDienst = null; state.ipDienst = null; state.ipStudent = null;
       updateWeekLabel(); updateFilterDropdown(); applyFilter();
+      renderStatsBar(data.beschikbaarheid, data.diensten);
       setLoader(false);
     }, function () { toast('Laden mislukt.', 'error'); setLoader(false); });
   }
@@ -255,13 +256,14 @@
     html += '</tr></thead><tbody>';
 
     studenten.forEach(function (s) {
-      html += '<tr><td class="psp-col-naam"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div>' +
+      var ini2 = (function(nm){ var p=nm.trim().split(/\s+/); return (p[0]?p[0][0]:'')+(p[1]?p[1][0]:''); })(s.naam).toUpperCase();
+      html += '<tr><td class="psp-col-naam"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div style="display:flex;align-items:center;gap:7px"><div class="psp-student-avatar">' + esc(ini2) + '</div><div>' +
         '<div class="psp-student-naam">' + esc(s.naam) + '</div>' +
         '<div class="psp-student-meta">' + esc(s.email) + '</div>' +
         (s.telefoon ? '<div class="psp-student-meta">📞 ' + esc(s.telefoon) + '</div>' : '') +
         (s.voorkeur ? '<div class="psp-student-voorkeur" title="' + esc(s.voorkeur) + '">💬 Voorkeur</div>' : '') +
         renderVaardigheden(s.vaardigheden) +
-        '</div><button class="psp-delete-student" data-id="' + s.id + '" title="Verwijderen">🗑</button></div></td>';
+        '</div></div><button class="psp-delete-student" data-id="' + s.id + '" title="Verwijderen">🗑</button></div></td>';
 
       DAG_KEYS.forEach(function (dk) {
         var dag = s.dagen[dk], datum = fmt(dates[dk]);
@@ -603,25 +605,61 @@
   function renderStudentenTabel(studenten) {
     if (!studenten) studenten = state.data.beschikbaarheid;
     var wrap = document.getElementById('psp-studenten-tabel-wrap');
-    if (!studenten.length) { wrap.innerHTML = '<div class="psp-panel-body"><p class="psp-empty-msg">Geen beschikbaarheid.</p></div>'; return; }
-    var html = '<table class="psp-table"><thead><tr><th>Naam</th><th>E-mail</th><th>Tel</th>';
-    DAG_KEYS.forEach(function (dk) { html += '<th>' + DAG_NAMES[dk] + '</th>'; });
-    html += '<th>Ervaring</th><th>Opmerkingen</th><th></th></tr></thead><tbody>';
+    if (!studenten.length) { wrap.innerHTML = '<p class="psp-empty-msg" style="padding:40px">Geen beschikbaarheid ingediend voor deze week.</p>'; return; }
+
+    function initials(naam) {
+      var parts = naam.trim().split(/\s+/);
+      return (parts[0] ? parts[0][0] : '') + (parts[1] ? parts[1][0] : '');
+    }
+
+    var html = '<div class="psp-besch-card-grid">';
     studenten.forEach(function (s) {
-      html += '<tr><td><strong>' + esc(s.naam) + '</strong></td><td><a href="mailto:' + esc(s.email) + '">' + esc(s.email) + '</a></td><td>' + esc(s.telefoon || '—') + '</td>';
+      var ini = initials(s.naam).toUpperCase();
+      var cardHtml = '<div class="psp-besch-card">' +
+        '<div class="psp-besch-card-top">' +
+          '<div class="psp-besch-avatar">' + esc(ini) + '</div>' +
+          '<div class="psp-besch-card-info">' +
+            '<div class="psp-besch-card-naam" title="' + esc(s.naam) + '">' + esc(s.naam) + '</div>' +
+            '<div class="psp-besch-card-email" title="' + esc(s.email) + '">' + esc(s.email) + '</div>' +
+            (s.telefoon ? '<div class="psp-besch-card-tel">' + esc(s.telefoon) + '</div>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="psp-besch-dag-row">';
+
       DAG_KEYS.forEach(function (dk) {
         var dag = s.dagen[dk];
-        html += '<td>' + (dag ? dag.van + '–' + dag.tot : '<span style="color:#ddd">—</span>') + '</td>';
+        cardHtml += '<div class="psp-besch-dag-dot">' +
+          '<div class="psp-besch-dag-label">' + DAG_NAMES[dk].substring(0,2) + '</div>' +
+          '<div class="psp-besch-dag-pip ' + (dag ? 'aan' : 'uit') + '">' + (dag ? '✓' : '–') + '</div>' +
+          (dag ? '<div class="psp-besch-dag-time">' + dag.van.substring(0,5) + '</div>' : '') +
+        '</div>';
       });
-      html += '<td>' + (s.vaardigheden && s.vaardigheden.length ? renderVaardigheden(s.vaardigheden) : '—') + '</td>' +
-        '<td><small>' + esc(s.voorkeur || '—') + '</small></td>' +
-        '<td style="display:flex;gap:4px">' +
-        '<button class="psp-besch-edit-btn psp-tbl-action" data-id="' + s.id + '" title="Bewerken">✎</button>' +
-        '<button class="psp-tbl-del" data-id="' + s.id + '" data-naam="' + esc(s.naam) + '">🗑</button>' +
-        '</td></tr>';
+
+      cardHtml += '</div>';
+
+      if (s.vaardigheden && s.vaardigheden.length) {
+        cardHtml += '<div class="psp-besch-vaard-tags">';
+        s.vaardigheden.slice(0,4).forEach(function (v) {
+          cardHtml += '<span class="psp-besch-vaard-tag">' + esc(v.replace(/_/g,' ')) + '</span>';
+        });
+        if (s.vaardigheden.length > 4) cardHtml += '<span class="psp-besch-vaard-tag">+' + (s.vaardigheden.length - 4) + '</span>';
+        cardHtml += '</div>';
+      }
+
+      if (s.voorkeur) {
+        cardHtml += '<div style="font-size:.68rem;color:var(--psp-pink);border-left:2px solid var(--psp-pink-mid);padding-left:7px;line-height:1.4">' + esc(s.voorkeur.substring(0,80)) + (s.voorkeur.length > 80 ? '…' : '') + '</div>';
+      }
+
+      cardHtml += '<div class="psp-besch-card-footer">' +
+        '<button class="psp-besch-card-action psp-besch-edit-btn" data-id="' + s.id + '">✎ Bewerken</button>' +
+        '<button class="psp-besch-card-del" data-id="' + s.id + '" data-naam="' + esc(s.naam) + '">🗑</button>' +
+        '</div>';
+
+      cardHtml += '</div>';
+      html += cardHtml;
     });
-    html += '</tbody></table>';
-    wrap.innerHTML = '<div class="psp-panel-body">' + html + '</div>';
+    html += '</div>';
+    wrap.innerHTML = html;
     wrap.querySelectorAll('.psp-tbl-del').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (!confirm('Verwijder beschikbaarheid van ' + btn.dataset.naam + '?')) return;
@@ -634,6 +672,19 @@
         if (s) openBeschikbaarheidModal(s);
       });
     });
+  }
+
+  /* ════ Stats bar ════ */
+  function renderStatsBar(beschikbaarheid, diensten) {
+    var el = document.getElementById('psp-stats-bar');
+    if (!el) return;
+    var nBesch  = beschikbaarheid ? beschikbaarheid.length : 0;
+    var nOpen   = 0; var nIngepland = 0;
+    if (diensten) diensten.forEach(function (d) { if (isIngepland(d)) nIngepland++; else nOpen++; });
+    el.innerHTML =
+      '<div class="psp-stat-card"><div class="psp-stat-icon pink">👥</div><div class="psp-stat-body"><div class="psp-stat-n pink">' + nBesch + '</div><div class="psp-stat-label">Beschikbaar</div></div></div>' +
+      '<div class="psp-stat-card"><div class="psp-stat-icon green">✅</div><div class="psp-stat-body"><div class="psp-stat-n green">' + nIngepland + '</div><div class="psp-stat-label">Ingepland</div></div></div>' +
+      '<div class="psp-stat-card"><div class="psp-stat-icon amber">📋</div><div class="psp-stat-body"><div class="psp-stat-n amber">' + nOpen + '</div><div class="psp-stat-label">Open diensten</div></div></div>';
   }
 
   /* ════ Beschikbaarheid modal (medewerker) ════ */
