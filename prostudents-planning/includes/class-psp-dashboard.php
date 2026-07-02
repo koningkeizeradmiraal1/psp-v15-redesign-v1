@@ -927,200 +927,73 @@ class PSP_Dashboard {
         $dienst_id     = (int) ( isset($_POST['dienst_id'])     ? $_POST['dienst_id']     : 0 );
         $student_email = sanitize_email( isset($_POST['student_email']) ? $_POST['student_email'] : '' );
         $opdrachtgever = sanitize_text_field( isset($_POST['opdrachtgever']) ? $_POST['opdrachtgever'] : '' );
-        $onderwerp     = sanitize_text_field( isset($_POST['onderwerp']) ? $_POST['onderwerp'] : '' );
+        $onderwerp     = sanitize_text_field( isset($_POST['onderwerp'])     ? $_POST['onderwerp']     : '' );
         $inhoud        = wp_kses_post( isset($_POST['inhoud']) ? $_POST['inhoud'] : '' );
 
-        if ( ! $dienst_id || ! $student_email ) wp_send_json_error( array( 'message' => 'Velden ontbreken.' ) );
-
-        $id = PSP_DB::save_werkbevestiging( array(
-            'dienst_id'     => $dienst_id,
-            'student_email' => $student_email,
-            'opdrachtgever' => $opdrachtgever,
-            'onderwerp'     => $onderwerp,
-            'inhoud'        => $inhoud,
-        ) );
-
-        // Vervang {bevestig_link} server-side
-        $bevestig_link = home_url( '/mijn-rooster/' );
-        $inhoud_send   = str_replace( '{bevestig_link}', $bevestig_link, $inhoud );
-
-        // Maak URLs klikbaar en stuur als nette HTML e-mail
-        $inhoud_escaped = esc_html( $inhoud_send );
-        // Maak URLs klikbaar
-        $inhoud_escaped = preg_replace(
-            '/(https?:\/\/[^\s<]+)/i',
-            '<a href="$1" style="color:#f97316;font-weight:600">$1</a>',
-            $inhoud_escaped
-        );
-        $inhoud_html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
-                     . '<body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">'
-                     . '<div style="max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)">'
-                     . '<div style="background:#1a1a2e;padding:24px 32px;display:flex;align-items:center">'
-                     . '<span style="font-size:1.4rem;font-weight:800;color:#fff">PS<span style="color:#f97316">Planning</span></span>'
-                     . '<span style="margin-left:12px;color:#94a3b8;font-size:.9rem">ProStudents Planningsportaal</span>'
-                     . '</div>'
-                     . '<div style="padding:32px;color:#1e293b;line-height:1.75;font-size:15px;white-space:pre-line">'
-                     . $inhoud_escaped
-                     . '</div>'
-                     . '<div style="background:#f1f5f9;padding:16px 32px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0">'
-                     . 'ProStudents Uitzendbureau &bull; Atoomweg 6b, 9743 AK Groningen &bull; <a href="https://prostudents.nl" style="color:#f97316">prostudents.nl</a>'
-                     . '</div>'
-                     . '</div></body></html>';
-        $headers = array( 'Content-Type: text/html; charset=UTF-8' );
-        $mail_ok = wp_mail( $student_email, $onderwerp, $inhoud_html, $headers );
-
-        wp_send_json_success( array(
-            'wb_id'   => $id,
-            'mail_ok' => $mail_ok,
-            'message' => $mail_ok ? '\u2713 Werkbevestiging verstuurd.' : '\u2713 Opgeslagen (e-mail mislukt â controleer mailconfiguratie).',
-        ) );
-    }
-
-    /* ─────────────── AJAX: aanmeldingen ophalen ─────────────── */
-    public static function ajax_get_aanmeldingen() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
-        $users = get_users( [
-            'role'    => 'psp_aanvraag',
-            'orderby' => 'registered',
-            'order'   => 'DESC',
-        ] );
-
-        $out = [];
-        foreach ( $users as $u ) {
-            if ( get_user_meta( $u->ID, 'psp_status', true ) !== 'aanvraag' ) continue;
-            $out[] = [
-                'user_id'  => $u->ID,
-                'naam'     => $u->display_name,
-                'email'    => $u->user_email,
-                'telefoon' => get_user_meta( $u->ID, 'psp_telefoon', true ),
-                'datum'    => substr( $u->user_registered, 0, 10 ),
-            ];
+        if ( ! $dienst_id || ! $student_email ) {
+            wp_send_json_error( array( 'message' => 'Onvolledige gegevens.' ) );
         }
-        wp_send_json_success( $out );
+
+        // Sla op in DB (upsert)
+        $wb_id = PSP_DB::save_werkbevestiging( $_POST );
+        if ( ! $wb_id ) {
+            wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
+        }
+
+        // Stuur e-mail naar student
+        $subject = $onderwerp ?: 'Werkbevestiging ProStudents';
+        $headers = array( 'Content-Type: text/html; charset=UTF-8' );
+        $verzonden = wp_mail( $student_email, $subject, nl2br( $inhoud ), $headers );
+
+        if ( $verzonden ) {
+            wp_send_json_success( array( 'message' => '\u2713 Werkbevestiging verstuurd naar ' . $student_email . '.' ) );
+        } else {
+            wp_send_json_error( array( 'message' => 'Opgeslagen, maar e-mail versturen mislukt.' ) );
+        }
     }
 
-    /* ─────────────── AJAX: aanmelding goedkeuren ─────────────── */
-    public static function ajax_goedkeur_aanmelding() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
-        $user_id = (int) ( $_POST['user_id'] ?? 0 );
-        if ( ! $user_id ) wp_send_json_error( ['message' => 'Geen gebruiker opgegeven.'] );
-
-        $user = get_user_by( 'id', $user_id );
-        if ( ! $user ) wp_send_json_error( ['message' => 'Gebruiker niet gevonden.'] );
-
-        $user->set_role('psp_student');
-        update_user_meta( $user_id, 'psp_status', 'goedgekeurd' );
-
-        PSP_Mail::stuur_welkomstmail( $user_id );
-
-        wp_send_json_success( ['message' => "✓ Account goedgekeurd en welkomstmail verstuurd."] );
-    }
-
-    /* ─────────────── AJAX: aanmelding afwijzen ─────────────── */
-    public static function ajax_wijs_af_aanmelding() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
-        $user_id = (int) ( $_POST['user_id'] ?? 0 );
-        if ( ! $user_id ) wp_send_json_error( ['message' => 'Geen gebruiker opgegeven.'] );
-
-        require_once ABSPATH . 'wp-admin/includes/user.php';
-        wp_delete_user( $user_id );
-
-        wp_send_json_success( ['message' => 'Aanmelding afgewezen en account verwijderd.'] );
-    }
-
-    /* ─────────────── AJAX: urenoverzicht per week + per klant ─────────────── */
-    public static function ajax_urenoverzicht() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
-        global $wpdb;
-        $jaar = (int) ( $_POST['jaar'] ?? date('Y') );
-
-        // Helper: uren berekenen incl. nachtdiensten
-        // TIME_TO_SEC geeft seconden; als tot < van dan is het een nachtdienst (+86400s)
-        $uren_expr = "( TIME_TO_SEC(d.tijdstip_tot) - TIME_TO_SEC(d.tijdstip_van)
-                       + IF(d.tijdstip_tot < d.tijdstip_van, 86400, 0) ) / 3600.0";
-
-        // ── Per week ──────────────────────────────────────────────────────────
-        $per_week = $wpdb->get_results( $wpdb->prepare(
-            "SELECT
-                YEAR(d.datum)                       AS jaar,
-                WEEK(d.datum, 1)                    AS week_nr,
-                MIN(d.datum)                        AS week_start,
-                COUNT(DISTINCT k.id)                AS diensten,
-                COUNT(DISTINCT b.email)             AS studenten,
-                ROUND( SUM({$uren_expr}), 1 )       AS uren
-             FROM   " . PSP_TABLE_DIENSTEN . " d
-             JOIN   " . PSP_TABLE_KOPPELINGEN . " k ON k.dienst_id = d.id
-             JOIN   " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
-             WHERE  YEAR(d.datum) = %d
-             GROUP  BY jaar, week_nr
-             ORDER  BY jaar DESC, week_nr DESC",
-            $jaar
-        ) );
-
-        // ── Per klant ─────────────────────────────────────────────────────────
-        $per_klant = $wpdb->get_results( $wpdb->prepare(
-            "SELECT
-                d.opdrachtgever,
-                COUNT(DISTINCT k.id)                AS diensten,
-                COUNT(DISTINCT b.email)             AS studenten,
-                ROUND( SUM({$uren_expr}), 1 )       AS uren
-             FROM   " . PSP_TABLE_DIENSTEN . " d
-             JOIN   " . PSP_TABLE_KOPPELINGEN . " k ON k.dienst_id = d.id
-             JOIN   " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
-             WHERE  YEAR(d.datum) = %d
-             GROUP  BY d.opdrachtgever
-             ORDER  BY uren DESC",
-            $jaar
-        ) );
-
-        // ── Totalen ───────────────────────────────────────────────────────────
-        $totaal = $wpdb->get_row( $wpdb->prepare(
-            "SELECT
-                COUNT(DISTINCT k.id)                AS diensten,
-                COUNT(DISTINCT b.email)             AS studenten,
-                ROUND( SUM({$uren_expr}), 1 )       AS uren
-             FROM   " . PSP_TABLE_DIENSTEN . " d
-             JOIN   " . PSP_TABLE_KOPPELINGEN . " k ON k.dienst_id = d.id
-             JOIN   " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
-             WHERE  YEAR(d.datum) = %d",
-            $jaar
-        ) );
-
-        wp_send_json_success( array(
-            'jaar'      => $jaar,
-            'per_week'  => $per_week,
-            'per_klant' => $per_klant,
-            'totaal'    => $totaal,
-        ) );
-    }
-
-    /* ─────────────── AJAX: bevestigingen overzicht voor recruiter ─────────────── */
+    /* ─────────────── AJAX: bevestigingen overzicht ─────────────── */
     public static function ajax_wb_bevestigingen() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
         $rows = PSP_DB::get_nieuwe_bevestigingen();
         $out  = array();
         foreach ( $rows as $r ) {
             $out[] = array(
-                'id'            => (int) $r->id,
-                'dienst_id'     => (int) $r->dienst_id,
                 'student_email' => $r->student_email,
                 'opdrachtgever' => $r->opdrachtgever,
-                'onderwerp'     => $r->onderwerp,
-                'bevestigd_op'  => $r->bevestigd_op,
                 'datum'         => isset($r->datum) ? $r->datum : '',
+                'bevestigd_op'  => isset($r->bevestigd_op) ? $r->bevestigd_op : '',
             );
         }
         wp_send_json_success( $out );
     }
 
+    /* ─────────────── AJAX: urenoverzicht rapportage ─────────────── */
+    public static function ajax_urenoverzicht() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        global $wpdb;
+        $jaar = (int) ( isset($_POST['jaar']) ? $_POST['jaar'] : date('Y') );
+        $tb_d = PSP_TABLE_DIENSTEN;
+        $tb_k = PSP_TABLE_KOPPELINGEN;
+
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT k.student_email,
+                    d.opdrachtgever,
+                    COUNT(*) AS aantal_diensten,
+                    ROUND(SUM(TIMESTAMPDIFF(MINUTE, d.tijdstip_van, d.tijdstip_tot)) / 60.0, 1) AS uren
+             FROM {$tb_k} k
+             JOIN {$tb_d} d ON d.id = k.dienst_id
+             WHERE YEAR(d.datum) = %d
+             GROUP BY k.student_email, d.opdrachtgever
+             ORDER BY k.student_email, d.opdrachtgever",
+            $jaar
+        ), ARRAY_A );
+
+        wp_send_json_success( $rows ? $rows : array() );
+    }
 
 }

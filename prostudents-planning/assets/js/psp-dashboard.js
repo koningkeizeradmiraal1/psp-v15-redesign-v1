@@ -1557,4 +1557,53 @@
           + '<td><strong style="color:#15803d">' + esc((r.bevestigd_op || '').substring(0, 16)) + '</strong></td>'
           + '</tr>';
       });
-      
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    }, function () {
+      el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
+    });
+  }
+
+  /* ════════════════════════════════════════════════════
+     RAPPORTAGE / URENOVERZICHT
+  ════════════════════════════════════════════════════ */
+  var _rapInit = false;
+
+  function initRapportageTab() {
+    laadUrenoverzicht();
+    if (_rapInit) return;
+    _rapInit = true;
+    var btn = document.getElementById('psp-rap-laad-btn');
+    if (btn) btn.addEventListener('click', function () { laadUrenoverzicht(); });
+  }
+
+  function laadUrenoverzicht() {
+    var wrap = document.getElementById('psp-rapportage-wrap');
+    if (!wrap) return;
+    var jaarEl = document.getElementById('psp-rap-jaar');
+    var jaar   = jaarEl ? jaarEl.value : new Date().getFullYear();
+    wrap.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
+    ajax('psp_urenoverzicht', { jaar: jaar }, function (data) {
+      if (!Array.isArray(data) || !data.length) {
+        wrap.innerHTML = '<p class="psp-empty-msg">Geen gegevens gevonden voor ' + esc(String(jaar)) + '.</p>';
+        return;
+      }
+      var html = '<table class="psp-table"><thead><tr>'
+        + '<th>Student</th><th>Opdrachtgever</th><th>Diensten</th><th>Uren</th>'
+        + '</tr></thead><tbody>';
+      data.forEach(function (r) {
+        html += '<tr>'
+          + '<td>' + esc(r.student_email || '') + '</td>'
+          + '<td>' + esc(r.opdrachtgever || '') + '</td>'
+          + '<td style="text-align:center">' + esc(String(r.aantal_diensten || 0)) + '</td>'
+          + '<td style="text-align:center"><strong>' + esc(String(r.uren || '0')) + '</strong></td>'
+          + '</tr>';
+      });
+      html += '</tbody></table>';
+      wrap.innerHTML = html;
+    }, function () {
+      wrap.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
+    });
+  }
+
+})();
