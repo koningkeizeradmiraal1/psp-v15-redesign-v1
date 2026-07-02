@@ -91,6 +91,20 @@ class PSP_DB {
             KEY dienst_id (dienst_id),
             KEY student_email (student_email),
             KEY status (status)
+        ) $charset;
+
+        CREATE TABLE " . PSP_TABLE_OPDRACHTGEVERS . " (
+            id              bigint(20)   NOT NULL AUTO_INCREMENT,
+            naam            varchar(200) NOT NULL,
+            contactpersoon  varchar(150) DEFAULT \'\',
+            email           varchar(150) DEFAULT \'\',
+            telefoon        varchar(50)  DEFAULT \'\',
+            adres           varchar(255) DEFAULT \'\',
+            notities        text         DEFAULT \'\',
+            aangemaakt_op   datetime     DEFAULT CURRENT_TIMESTAMP,
+            bijgewerkt_op   datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY naam (naam)
         ) $charset;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -457,11 +471,51 @@ class PSP_DB {
             "SELECT w.*, d.datum, d.tijdstip_van, d.tijdstip_tot
              FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " w
              LEFT JOIN " . PSP_TABLE_DIENSTEN . " d ON d.id = w.dienst_id
-             WHERE w.status = \'bevestigd\'
+             WHERE w.status = 'bevestigd'
              ORDER BY w.bevestigd_op DESC
              LIMIT 50"
         );
     }
 
+    /* ══════ Opdrachtgevers ══════ */
+
+    public static function get_opdrachtgevers() {
+        global $wpdb;
+        return $wpdb->get_results(
+            "SELECT * FROM " . PSP_TABLE_OPDRACHTGEVERS . " ORDER BY naam ASC",
+            ARRAY_A
+        );
+    }
+
+    public static function save_opdrachtgever( $data ) {
+        global $wpdb;
+        $id = (int) ( $data['id'] ?? 0 );
+        $fields = array(
+            'naam'           => sanitize_text_field( $data['naam'] ?? '' ),
+            'contactpersoon' => sanitize_text_field( $data['contactpersoon'] ?? '' ),
+            'email'          => sanitize_email( $data['email'] ?? '' ),
+            'telefoon'       => sanitize_text_field( $data['telefoon'] ?? '' ),
+            'adres'          => sanitize_text_field( $data['adres'] ?? '' ),
+            'notities'       => sanitize_textarea_field( $data['notities'] ?? '' ),
+        );
+        if ( $id ) {
+            $wpdb->update( PSP_TABLE_OPDRACHTGEVERS, $fields, array('id' => $id) );
+            return $id;
+        }
+        $wpdb->insert( PSP_TABLE_OPDRACHTGEVERS, $fields );
+        return $wpdb->insert_id;
+    }
+
+    public static function delete_opdrachtgever( $id ) {
+        global $wpdb;
+        return $wpdb->delete( PSP_TABLE_OPDRACHTGEVERS, array('id' => (int)$id) );
+    }
+
+    public static function get_opdrachtgever_namen() {
+        global $wpdb;
+        return $wpdb->get_col(
+            "SELECT naam FROM " . PSP_TABLE_OPDRACHTGEVERS . " ORDER BY naam ASC"
+        );
+    }
 
 }

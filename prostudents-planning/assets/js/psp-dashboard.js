@@ -925,6 +925,7 @@
         if (btn.dataset.stab === 'werkbevestiging') initWbTab();
         if (btn.dataset.stab === 'bevestigingen')  laadWbBevestigingen();
         if (btn.dataset.stab === 'rapportage')     initRapportageTab();
+        if (btn.dataset.stab === 'opdrachtgevers') laadOpdrachtgevers();
       });
     });
 
@@ -938,6 +939,183 @@
       var badge = document.getElementById('psp-tarieven-badge');
       if (badge) { badge.textContent = n; badge.style.display = n ? '' : 'none'; }
     });
+  }
+
+  /* ════════════════════════════════════════════════════
+     AANMELDINGEN
+  ════════════════════════════════════════════════════ */
+  function laadAanmeldingenBadge() {
+    ajax('psp_get_aanmeldingen', {}, function (data) {
+      var n = Array.isArray(data) ? data.length : 0;
+      var badge = document.getElementById('psp-aanmeldingen-badge');
+      if (badge) { badge.textContent = n; badge.style.display = n ? '' : 'none'; }
+    });
+  }
+
+  function laadAanmeldingen() {
+    var el = document.getElementById('psp-aanmeldingen-lijst');
+    if (!el) return;
+    el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
+    ajax('psp_get_aanmeldingen', {}, function (data) {
+      if (!Array.isArray(data) || !data.length) {
+        el.innerHTML = '<p class="psp-empty-msg">&#10003; Geen openstaande aanmeldingen.</p>';
+        return;
+      }
+      var html = '<table class="psp-table"><thead><tr>'
+        + '<th>Naam</th><th>E-mail</th><th>Telefoon</th><th>Aangemeld op</th><th>Actie</th>'
+        + '</tr></thead><tbody>';
+      data.forEach(function (r) {
+        html += '<tr>'
+          + '<td><strong>' + esc(r.naam) + '</strong></td>'
+          + '<td>' + esc(r.email) + '</td>'
+          + '<td>' + esc(r.telefoon || '—') + '</td>'
+          + '<td>' + esc(r.aangemeld) + '</td>'
+          + '<td style="white-space:nowrap;display:flex;gap:4px">'
+          + '<button class="psp-btn-sm psp-btn-primary psp-goedkeur-btn" data-id="' + r.id + '" data-naam="' + esc(r.naam) + '">&#10003; Goedkeuren</button>'
+          + '<button class="psp-btn-sm psp-btn-danger psp-afwijzen-btn" data-id="' + r.id + '" data-naam="' + esc(r.naam) + '">&#10005; Afwijzen</button>'
+          + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+
+      el.querySelectorAll('.psp-goedkeur-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Aanmelding van ' + btn.dataset.naam + ' goedkeuren?\nEr wordt een welkomstmail verstuurd.')) return;
+          btn.disabled = true; btn.textContent = '…';
+          ajax('psp_goedkeur_aanmelding', { user_id: btn.dataset.id }, function (res) {
+            toast(res.message, 'success');
+            laadAanmeldingen();
+            laadAanmeldingenBadge();
+          }, function (msg) { toast(msg || 'Mislukt.', 'error'); btn.disabled = false; btn.textContent = '✓ Goedkeuren'; });
+        });
+      });
+
+      el.querySelectorAll('.psp-afwijzen-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Aanmelding van ' + btn.dataset.naam + ' AFWIJZEN en verwijderen?')) return;
+          btn.disabled = true; btn.textContent = '…';
+          ajax('psp_wijs_af_aanmelding', { user_id: btn.dataset.id }, function (res) {
+            toast(res.message, 'success');
+            laadAanmeldingen();
+            laadAanmeldingenBadge();
+          }, function (msg) { toast(msg || 'Mislukt.', 'error'); btn.disabled = false; btn.textContent = '✗ Afwijzen'; });
+        });
+      });
+    }, function () {
+      el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
+    });
+  }
+
+  /* ════════════════════════════════════════════════════
+     OPDRACHTGEVERS
+  ════════════════════════════════════════════════════ */
+  var _ogInit = false;
+
+  function laadOpdrachtgevers() {
+    var el = document.getElementById('psp-opdrachtgevers-lijst');
+    if (!el) return;
+    el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
+
+    if (!_ogInit) {
+      _ogInit = true;
+      var nieuwBtn = document.getElementById('psp-og-nieuw-btn');
+      if (nieuwBtn) nieuwBtn.addEventListener('click', function () { openOgModal(null); });
+
+      document.querySelectorAll('[data-modal="psp-modal-og"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.getElementById('psp-modal-og').style.display = 'none';
+        });
+      });
+
+      var form = document.getElementById('psp-og-form');
+      if (form) form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = document.getElementById('psp-og-opslaan-btn');
+        btn.disabled = true; btn.textContent = '…';
+        var fd = {
+          id:             document.getElementById('psp-og-id').value,
+          naam:           document.getElementById('psp-og-naam').value,
+          contactpersoon: document.getElementById('psp-og-contact').value,
+          email:          document.getElementById('psp-og-email').value,
+          telefoon:       document.getElementById('psp-og-telefoon').value,
+          adres:          document.getElementById('psp-og-adres').value,
+          notities:       document.getElementById('psp-og-notities').value,
+        };
+        ajax('psp_save_opdrachtgever', fd, function (res) {
+          toast(res.message || '✓ Opgeslagen.', 'success');
+          document.getElementById('psp-modal-og').style.display = 'none';
+          laadOpdrachtgevers();
+          btn.disabled = false; btn.textContent = 'Opslaan';
+        }, function (msg) {
+          toast(msg || 'Opslaan mislukt.', 'error');
+          btn.disabled = false; btn.textContent = 'Opslaan';
+        });
+      });
+    }
+
+    ajax('psp_get_opdrachtgevers', {}, function (data) {
+      if (!Array.isArray(data) || !data.length) {
+        el.innerHTML = '<p class="psp-empty-msg">Nog geen opdrachtgevers toegevoegd.</p>';
+        return;
+      }
+      var html = '<table class="psp-table"><thead><tr>'
+        + '<th>Naam</th><th>Contactpersoon</th><th>E-mail</th><th>Telefoon</th><th>Acties</th>'
+        + '</tr></thead><tbody>';
+      data.forEach(function (r) {
+        html += '<tr>'
+          + '<td><strong>' + esc(r.naam) + '</strong>'
+          + (r.adres ? '<br><small style="color:#888">' + esc(r.adres) + '</small>' : '')
+          + '</td>'
+          + '<td>' + esc(r.contactpersoon || '—') + '</td>'
+          + '<td>' + (r.email ? '<a href="mailto:' + esc(r.email) + '">' + esc(r.email) + '</a>' : '—') + '</td>'
+          + '<td>' + esc(r.telefoon || '—') + '</td>'
+          + '<td style="white-space:nowrap;display:flex;gap:4px">'
+          + '<button class="psp-btn-sm psp-btn-ghost psp-og-edit-btn" data-id="' + r.id + '">✎ Bewerken</button>'
+          + '<button class="psp-btn-sm psp-btn-danger psp-og-del-btn" data-id="' + r.id + '" data-naam="' + esc(r.naam) + '">✕ Verwijder</button>'
+          + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+
+      // Bewerken
+      el.querySelectorAll('.psp-og-edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.dataset.id;
+          var r  = data.find(function (x) { return String(x.id) === String(id); });
+          if (r) openOgModal(r);
+        });
+      });
+
+      // Verwijderen
+      el.querySelectorAll('.psp-og-del-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Opdrachtgever "' + btn.dataset.naam + '" verwijderen?')) return;
+          btn.disabled = true;
+          ajax('psp_delete_opdrachtgever', { id: btn.dataset.id }, function (res) {
+            toast(res.message || 'Verwijderd.', 'success');
+            laadOpdrachtgevers();
+          }, function (msg) { toast(msg || 'Mislukt.', 'error'); btn.disabled = false; });
+        });
+      });
+    }, function () {
+      el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
+    });
+  }
+
+  function openOgModal(r) {
+    var modal = document.getElementById('psp-modal-og');
+    if (!modal) return;
+    document.getElementById('psp-modal-og-title').textContent = r ? 'Opdrachtgever bewerken' : 'Nieuwe opdrachtgever';
+    document.getElementById('psp-og-id').value       = r ? r.id : '';
+    document.getElementById('psp-og-naam').value     = r ? r.naam : '';
+    document.getElementById('psp-og-contact').value  = r ? (r.contactpersoon || '') : '';
+    document.getElementById('psp-og-email').value    = r ? (r.email || '') : '';
+    document.getElementById('psp-og-telefoon').value = r ? (r.telefoon || '') : '';
+    document.getElementById('psp-og-adres').value    = r ? (r.adres || '') : '';
+    document.getElementById('psp-og-notities').value = r ? (r.notities || '') : '';
+    var saveBtn = document.getElementById('psp-og-opslaan-btn');
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Opslaan'; }
+    modal.style.display = 'flex';
   }
 
   function laadTarievenTodo() {
@@ -1033,12 +1211,17 @@
               : '<button class="psp-btn-sm psp-btn-primary psp-maak-acc-btn">Account aanmaken</button>' )
           + '</td>'
           + '<td class="psp-vaard-badges-cel">' + vaardBadges(s.vaardigheden) + '</td>'
-          + '<td>' + ( s.has_account
+          + '<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
+          + ( s.has_account
               ? '<button class="psp-btn-sm psp-btn-ghost psp-edit-vaard-btn" '
                 + 'data-user-id="' + (s.user_id||0) + '" '
                 + 'data-naam="' + esc(s.naam) + '" '
                 + 'data-vaard=\'' + JSON.stringify(s.vaardigheden||{}).replace(/\'/g,"&#39;") + '\''
                 + '>✎ Vaardigheden</button>'
+                + '<button class="psp-btn-sm psp-btn-ghost psp-stuur-welkom-btn" '
+                + 'data-user-id="' + (s.user_id||0) + '" '
+                + 'data-naam="' + esc(s.naam) + '"'
+                + '>&#9993; Welkomsmail</button>'
               : '' )
           + '</td>'
           + '</tr>';
@@ -1076,6 +1259,21 @@
             btn.dataset.naam,
             JSON.parse(btn.dataset.vaard || '{}')
           );
+        });
+      });
+
+      // Welkomsmail versturen
+      el.querySelectorAll('.psp-stuur-welkom-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Welkomsmail sturen naar ' + btn.dataset.naam + '?')) return;
+          btn.disabled = true; btn.textContent = '…';
+          ajax('psp_stuur_welkomstmail', { user_id: btn.dataset.userId }, function (res) {
+            toast(res.message || '✓ Welkomsmail verstuurd.', 'success');
+            btn.disabled = false; btn.innerHTML = '&#9993; Welkomsmail';
+          }, function (msg) {
+            toast(msg || 'Versturen mislukt.', 'error');
+            btn.disabled = false; btn.innerHTML = '&#9993; Welkomsmail';
+          });
         });
       });
 
@@ -1392,144 +1590,130 @@
     r.push('');
     r.push(ctx.bevestig_link);
     r.push('');
-    r.push('Je kunt ook inloggen op het portaal en daar op "Gelezen en akkoord" klikken.');
+    r.push('Je kunt ook inloggen op het portaal en daar op “Gelezen en akkoord” klikken.');
     r.push('');
     r.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     r.push('');
     r.push('Met vriendelijke groet,');
     r.push('');
-    r.push('ProStudents Uitzendbureau Groningen');
-    r.push('T: 050 \u2013 311 23 22');
-    r.push('E: info@prostudents.nl');
-    r.push('W: www.prostudents.nl');
-    r.push('Atoomweg 6b, 9743 AK Groningen');
+    r.push('ProStudents');
+    r.push('📞 050 – 311 23 22  |  📧 info@prostudents.nl');
+    r.push('');
     return r.join('\n');
   }
 
-  function toonWbStuurModal(params) {
-    var dienstId     = String(params.dienst_id || '');
-    var studentEmail = String(params.student_email || '');
-    var studentNaam  = String(params.student_naam || params.naam || '');
-    var og           = String(params.opdrachtgever || '');
-
-    if (!dienstId || !studentEmail) return;
-
-    // Haal dienst op uit state voor echte waarden
-    var dienst = null;
-    if (state.data && state.data.diensten) {
-      dienst = state.data.diensten.find(function (d) { return String(d.id) === dienstId; });
-    }
-
-    var ctx = {
-      naam:          studentNaam,
-      datum:         dienst ? dienst.datum         : '',
-      van:           dienst ? dienst.tijdstip_van.substring(0, 5) : '',
-      tot:           dienst ? dienst.tijdstip_tot.substring(0, 5) : '',
-      og:            og,
-      locatie:       dienst ? (dienst.locatie   || '') : '',
-      type_werk:     dienst ? (dienst.type_werk || '') : '',
-      bevestig_link: (typeof pspDash !== 'undefined' && pspDash.mijnRoosterUrl) ? pspDash.mijnRoosterUrl : window.location.origin + '/mijn-rooster/',
-    };
-
-    document.getElementById('psp-wbs-dienst-id').value    = dienstId;
-    document.getElementById('psp-wbs-student-email').value = studentEmail;
-    document.getElementById('psp-wbs-opdrachtgever').value = og;
-    document.getElementById('psp-wbs-aan').value           = studentNaam + ' <' + studentEmail + '>';
-
-    ajax('psp_wb_templates_voor_og', { opdrachtgever: og, dienst_id: dienstId }, function (data) {
-      var templates = data.templates || [];
-      var bestaande = data.bestaande;
-
-      // Startinhoud: bestaande WB > eerste template > standaard
-      var startTemplate = bestaande || (templates.length ? templates[0] : null);
-      var rawOnderwerp  = startTemplate ? (startTemplate.onderwerp || '') : 'Werkbevestiging {datum} – {opdrachtgever}';
-      var rawInhoud     = startTemplate ? (startTemplate.inhoud    || '') : '';
-
-      // Vul standaard inhoud als template leeg is
-      if (!rawInhoud) rawInhoud = defaultWbInhoud(ctx);
-
-      // Vervang placeholders
-      document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(rawOnderwerp, ctx);
-      document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(rawInhoud,    ctx);
-
-      // Status info
-      var statusInfo = document.getElementById('psp-wbs-status-info');
-      if (bestaande) {
-        var statusTxt = bestaande.status === 'bevestigd'
-          ? '\u2713 Student heeft deze werkbevestiging bevestigd op ' + (bestaande.bevestigd_op || '').substring(0, 16) + '.'
-          : '📧 Eerder verstuurd op ' + (bestaande.verzonden_op || '').substring(0, 16) + '. Je kunt de inhoud aanpassen en opnieuw versturen.';
-        statusInfo.textContent  = statusTxt;
-        statusInfo.style.display   = '';
-        statusInfo.style.background = bestaande.status === 'bevestigd' ? '#f0fdf4' : '#fff7ed';
-        statusInfo.style.color      = bestaande.status === 'bevestigd' ? '#166534' : '#9a3412';
-      } else {
-        statusInfo.style.display = 'none';
-      }
-
-      // Template-keuzeknoppen (indien meerdere templates)
-      var keuzeDiv  = document.getElementById('psp-wbs-template-keuze');
-      var keuzeList = document.getElementById('psp-wbs-template-btns');
-      if (templates.length > 1) {
-        keuzeList.innerHTML = '';
-        templates.forEach(function (t) {
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'psp-btn-ghost psp-btn-sm';
-          btn.textContent = t.naam;
-          btn.addEventListener('click', function () {
-            document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(t.onderwerp || '', ctx);
-            document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(t.inhoud    || '', ctx);
-          });
-          keuzeList.appendChild(btn);
-        });
-        keuzeDiv.style.display = '';
-      } else {
-        keuzeDiv.style.display = 'none';
-      }
-
-      document.getElementById('psp-modal-wb-stuur').style.display = '';
-      // Ghost-click beveiliging: disable stuurBtn kort na openen zodat een
-      // lingerende klik van "Inplannen" hem niet per ongeluk triggert.
-      var _sBtn = document.getElementById('psp-wbs-stuur-btn');
-      if (_sBtn) {
-        _sBtn.disabled = true;
-        setTimeout(function () { _sBtn.disabled = false; }, 900);
-      }
-    });
-  }
-
-
-  // Initialiseer WB stuur modal events (eenmalig)
+  /* ════════════════════════════════════════════════════
+     WERKBEVESTIGING VERSTUREN — modal init
+  ════════════════════════════════════════════════════ */
   (function () {
     document.addEventListener('DOMContentLoaded', function () {
-      // Sluiten
+
+      // Sluit-knoppen
       document.querySelectorAll('[data-modal="psp-modal-wb-stuur"]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           document.getElementById('psp-modal-wb-stuur').style.display = 'none';
         });
       });
 
-      // Verstuur knop
-      var stuurBtn = document.getElementById('psp-wbs-stuur-btn');
-      if (stuurBtn) stuurBtn.addEventListener('click', function () {
-        stuurBtn.disabled = true;
-        var fd = {
-          dienst_id:     document.getElementById('psp-wbs-dienst-id').value,
-          student_email: document.getElementById('psp-wbs-student-email').value,
-          opdrachtgever: document.getElementById('psp-wbs-opdrachtgever').value,
-          onderwerp:     document.getElementById('psp-wbs-onderwerp').value,
-          inhoud:        document.getElementById('psp-wbs-inhoud').value,
-        };
-        ajax('psp_wb_stuur', fd, function (res) {
-          document.getElementById('psp-modal-wb-stuur').style.display = 'none';
-          toast(res.message || '\u2713 Verstuurd.', 'success');
-          loadWeek(); // herlaad zodat WB status in kaart zichtbaar wordt
-          stuurBtn.disabled = false;
-        }, function (msg) {
-          toast(msg || 'Versturen mislukt.', 'error');
-          stuurBtn.disabled = false;
+      // Open modal via kaartknop (event delegation)
+      document.body.addEventListener('click', function (e) {
+        var btn = e.target.closest('.psp-wb-stuur-kaart-btn');
+        if (!btn) return;
+
+        var dienstId = btn.dataset.dienstId;
+        var email    = btn.dataset.email;
+        var naam     = btn.dataset.naam;
+        var og       = btn.dataset.og;
+
+        // Sla context op in hidden fields + modal dataset
+        var modal = document.getElementById('psp-modal-wb-stuur');
+        modal.dataset.dienstId      = dienstId;
+        modal.dataset.studentEmail  = email;
+        modal.dataset.opdrachtgever = og;
+
+        document.getElementById('psp-wbs-dienst-id').value     = dienstId;
+        document.getElementById('psp-wbs-student-email').value  = email;
+        document.getElementById('psp-wbs-opdrachtgever').value  = og;
+        document.getElementById('psp-wbs-aan').value            = naam + ' <' + email + '>';
+
+        var statusEl = document.getElementById('psp-wbs-status-info');
+        if (statusEl) statusEl.style.display = 'none';
+
+        // Laad templates voor deze opdrachtgever
+        ajax('psp_wb_templates_voor_og', { opdrachtgever: og, dienst_id: dienstId }, function (res) {
+          var templates  = Array.isArray(res.templates) ? res.templates : [];
+          var bestaande  = res.bestaande || null;
+          var templBtns  = document.getElementById('psp-wbs-template-btns');
+          var templWrap  = document.getElementById('psp-wbs-template-keuze');
+
+          if (templates.length && templBtns && templWrap) {
+            var ctx = { naam: naam, og: og, bevestig_link: '' };
+            templBtns.innerHTML = templates.map(function (t) {
+              return '<button type="button" class="psp-btn-sm psp-btn-ghost psp-wbs-templ-btn" '
+                + 'data-id="' + t.id + '">' + esc(t.naam) + '</button>';
+            }).join('');
+            templWrap.style.display = '';
+
+            templBtns.querySelectorAll('.psp-wbs-templ-btn').forEach(function (tb) {
+              tb.addEventListener('click', function () {
+                var t = templates.find(function (x) { return String(x.id) === tb.dataset.id; });
+                if (!t) return;
+                document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(t.onderwerp, ctx);
+                document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(t.inhoud, ctx);
+              });
+            });
+          } else if (templWrap) {
+            templWrap.style.display = 'none';
+          }
+
+          if (bestaande) {
+            document.getElementById('psp-wbs-onderwerp').value = bestaande.onderwerp || '';
+            document.getElementById('psp-wbs-inhoud').value    = bestaande.inhoud    || '';
+            if (statusEl) {
+              statusEl.style.display  = '';
+              statusEl.style.background = bestaande.status === 'bevestigd' ? '#f0fdf4' : '#fffbeb';
+              statusEl.style.color      = bestaande.status === 'bevestigd' ? '#15803d' : '#92400e';
+              statusEl.textContent = bestaande.status === 'bevestigd'
+                ? '✓ Student heeft bevestigd op ' + (bestaande.bevestigd_op || '').substring(0, 16)
+                : '📧 Eerder verstuurd op ' + (bestaande.verzonden_op || '').substring(0, 16);
+            }
+          } else {
+            document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
+            document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
+          }
+
+          modal.style.display = 'flex';
+        }, function () {
+          document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
+          document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
+          modal.style.display = 'flex';
         });
       });
+
+      // Versturen
+      var stuurBtn = document.getElementById('psp-wbs-stuur-btn');
+      if (stuurBtn) {
+        stuurBtn.addEventListener('click', function () {
+          var modal = document.getElementById('psp-modal-wb-stuur');
+          var fd = {
+            dienst_id:     modal.dataset.dienstId     || document.getElementById('psp-wbs-dienst-id').value,
+            student_email: modal.dataset.studentEmail || document.getElementById('psp-wbs-student-email').value,
+            opdrachtgever: modal.dataset.opdrachtgever|| document.getElementById('psp-wbs-opdrachtgever').value,
+            onderwerp:     document.getElementById('psp-wbs-onderwerp').value,
+            inhoud:        document.getElementById('psp-wbs-inhoud').value,
+          };
+          stuurBtn.disabled = true; stuurBtn.textContent = '…';
+          ajax('psp_wb_stuur', fd, function (res) {
+            modal.style.display = 'none';
+            toast(res.message || '✓ Verstuurd.', 'success');
+            loadWeek();
+            stuurBtn.disabled = false; stuurBtn.innerHTML = '📨 Versturen';
+          }, function (msg) {
+            toast(msg || 'Versturen mislukt.', 'error');
+            stuurBtn.disabled = false; stuurBtn.innerHTML = '📨 Versturen';
+          });
+        });
+      }
     });
   })();
 
@@ -1543,7 +1727,7 @@
     el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
     ajax('psp_wb_bevestigingen', {}, function (data) {
       if (!Array.isArray(data) || !data.length) {
-        el.innerHTML = '<p class="psp-empty-msg">\u2713 Geen nieuwe bevestigingen.</p>';
+        el.innerHTML = '<p class="psp-empty-msg">✓ Geen nieuwe bevestigingen.</p>';
         return;
       }
       var html = '<table class="psp-table"><thead><tr>'

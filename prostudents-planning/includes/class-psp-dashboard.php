@@ -27,6 +27,19 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_wb_stuur',              [self::class, 'ajax_wb_stuur']);
         add_action('wp_ajax_psp_wb_bevestigingen',      [self::class, 'ajax_wb_bevestigingen']);
         add_action('wp_ajax_psp_urenoverzicht',          [self::class, 'ajax_urenoverzicht']);
+        add_action('wp_ajax_psp_stuur_welkomstmail',     [self::class, 'ajax_stuur_welkomstmail']);
+        add_action('wp_ajax_psp_get_opdrachtgevers',     [self::class, 'ajax_get_opdrachtgevers']);
+        add_action('wp_ajax_psp_save_opdrachtgever',     [self::class, 'ajax_save_opdrachtgever']);
+        add_action('wp_ajax_psp_delete_opdrachtgever',   [self::class, 'ajax_delete_opdrachtgever']);
+
+        // Zorg dat nieuwe DB-tabellen aangemaakt worden zonder heractivatie
+        add_action('plugins_loaded', function () {
+            if ( get_option('psp_db_version') !== PSP_VERSION ) {
+                require_once PSP_DIR . 'includes/class-psp-db.php';
+                PSP_DB::create_tables();
+                update_option('psp_db_version', PSP_VERSION);
+            }
+        }, 5 );
     }
 
     /* ─────────────── Shortcode ─────────────── */
@@ -220,6 +233,7 @@ class PSP_Dashboard {
       <button class="psp-stab" data-stab="werkbevestiging">&#128196; Werkbevestiging</button>
       <button class="psp-stab" data-stab="bevestigingen">&#10003; Bevestigingen</button>
       <button class="psp-stab" data-stab="rapportage">&#128200; Uren</button>
+      <button class="psp-stab" data-stab="opdrachtgevers">&#127968; Opdrachtgevers</button>
     </div>
 
     <!-- Subtab: Tarieven -->
@@ -303,6 +317,17 @@ class PSP_Dashboard {
           Overzicht van werkbevestigingen die door studenten zijn bevestigd.
         </p>
         <div id="psp-wb-bevestigingen-lijst"><p class="psp-empty-msg">Laden&#8230;</p></div>
+      </div>
+    </div>
+
+    <!-- Subtab: Opdrachtgevers -->
+    <div id="psp-stab-opdrachtgevers" class="psp-stab-panel" style="display:none">
+      <div class="psp-panel-body">
+        <div class="psp-panel-header" style="margin-bottom:16px">
+          <p style="color:#666;font-size:.87rem;margin:0">Beheer opdrachtgevers: naam, contactpersoon, e-mail en telefoon.</p>
+          <button class="psp-btn-primary psp-btn-sm" id="psp-og-nieuw-btn">+ Nieuwe opdrachtgever</button>
+        </div>
+        <div id="psp-opdrachtgevers-lijst"><p class="psp-empty-msg">Laden&#8230;</p></div>
       </div>
     </div>
   </div>
@@ -424,6 +449,53 @@ class PSP_Dashboard {
   </div>
 </div>
 
+
+<!-- MODAL: Opdrachtgever aanmaken/bewerken -->
+<div id="psp-modal-og" class="psp-modal" style="display:none">
+  <div class="psp-modal-box">
+    <div class="psp-modal-header">
+      <h2 id="psp-modal-og-title">Nieuwe opdrachtgever</h2>
+      <button class="psp-modal-close" data-modal="psp-modal-og">&#10005;</button>
+    </div>
+    <form id="psp-og-form">
+      <input type="hidden" id="psp-og-id" name="id" value="">
+      <div class="psp-modal-body">
+        <div class="psp-form-row2">
+          <div class="psp-field">
+            <label>Naam opdrachtgever *</label>
+            <input type="text" name="naam" id="psp-og-naam" required placeholder="Bedrijfsnaam">
+          </div>
+          <div class="psp-field">
+            <label>Contactpersoon</label>
+            <input type="text" name="contactpersoon" id="psp-og-contact" placeholder="Voornaam achternaam">
+          </div>
+        </div>
+        <div class="psp-form-row2">
+          <div class="psp-field">
+            <label>E-mailadres</label>
+            <input type="email" name="email" id="psp-og-email" placeholder="contact@bedrijf.nl">
+          </div>
+          <div class="psp-field">
+            <label>Telefoonnummer</label>
+            <input type="text" name="telefoon" id="psp-og-telefoon" placeholder="06-12345678">
+          </div>
+        </div>
+        <div class="psp-field">
+          <label>Adres</label>
+          <input type="text" name="adres" id="psp-og-adres" placeholder="Straat 1, 1234 AB Stad">
+        </div>
+        <div class="psp-field">
+          <label>Notities</label>
+          <textarea name="notities" id="psp-og-notities" rows="3" placeholder="Interne notities..."></textarea>
+        </div>
+      </div>
+      <div class="psp-modal-footer">
+        <button type="button" class="psp-btn-ghost" data-modal="psp-modal-og">Annuleren</button>
+        <button type="submit" class="psp-btn-primary" id="psp-og-opslaan-btn">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- MODAL: Vaardigheden bewerken -->
 <div id="psp-modal-vaardigheden" class="psp-modal" style="display:none">
@@ -968,6 +1040,106 @@ class PSP_Dashboard {
             );
         }
         wp_send_json_success( $out );
+    }
+
+    /* ─────────────── AJAX: aanmeldingen ophalen ─────────────── */
+    public static function ajax_get_aanmeldingen() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $users = get_users( array(
+            'role'    => 'psp_aanvraag',
+            'orderby' => 'registered',
+            'order'   => 'DESC',
+            'fields'  => array('ID','display_name','user_email','user_registered'),
+        ) );
+
+        $out = array();
+        foreach ( $users as $u ) {
+            $out[] = array(
+                'id'         => $u->ID,
+                'naam'       => $u->display_name,
+                'email'      => $u->user_email,
+                'aangemeld'  => substr($u->user_registered, 0, 10),
+                'telefoon'   => get_user_meta($u->ID, 'psp_telefoon', true) ?: '',
+            );
+        }
+        wp_send_json_success( $out );
+    }
+
+    /* ─────────────── AJAX: aanmelding goedkeuren ─────────────── */
+    public static function ajax_goedkeur_aanmelding() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        $user    = get_user_by('id', $user_id);
+        if ( ! $user ) wp_send_json_error( array('message' => 'Gebruiker niet gevonden.') );
+
+        $user->set_role('psp_student');
+        PSP_Mail::stuur_welkomstmail( $user_id );
+
+        wp_send_json_success( array('message' => '✓ ' . $user->display_name . ' goedgekeurd. Welkomstmail verstuurd.') );
+    }
+
+    /* ─────────────── AJAX: aanmelding afwijzen ─────────────── */
+    public static function ajax_wijs_af_aanmelding() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        $user    = get_user_by('id', $user_id);
+        if ( ! $user ) wp_send_json_error( array('message' => 'Gebruiker niet gevonden.') );
+
+        $naam = $user->display_name;
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        wp_delete_user( $user_id );
+
+        wp_send_json_success( array('message' => $naam . ' afgewezen en verwijderd.') );
+    }
+
+    /* ─────────────── AJAX: welkomstmail versturen ─────────────── */
+    public static function ajax_stuur_welkomstmail() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $user_id = (int) ( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id ) wp_send_json_error( array('message' => 'Geen gebruiker opgegeven.') );
+
+        $ok = PSP_Mail::stuur_welkomstmail( $user_id );
+        if ( $ok ) {
+            wp_send_json_success( array('message' => '✓ Welkomstmail verstuurd.') );
+        } else {
+            wp_send_json_error( array('message' => 'Versturen mislukt. Controleer de mailconfiguratie.') );
+        }
+    }
+
+    /* ─────────────── AJAX: opdrachtgevers ophalen ─────────────── */
+    public static function ajax_get_opdrachtgevers() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+        wp_send_json_success( PSP_DB::get_opdrachtgevers() );
+    }
+
+    /* ─────────────── AJAX: opdrachtgever opslaan ─────────────── */
+    public static function ajax_save_opdrachtgever() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $id = PSP_DB::save_opdrachtgever( $_POST );
+        if ( ! $id ) wp_send_json_error( array('message' => 'Opslaan mislukt. Naam is mogelijk al in gebruik.') );
+        wp_send_json_success( array('id' => $id, 'message' => '✓ Opdrachtgever opgeslagen.') );
+    }
+
+    /* ─────────────── AJAX: opdrachtgever verwijderen ─────────────── */
+    public static function ajax_delete_opdrachtgever() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $id = (int) ( $_POST['id'] ?? 0 );
+        if ( ! $id ) wp_send_json_error();
+        PSP_DB::delete_opdrachtgever( $id );
+        wp_send_json_success( array('message' => 'Opdrachtgever verwijderd.') );
     }
 
     /* ─────────────── AJAX: urenoverzicht rapportage ─────────────── */
