@@ -117,12 +117,12 @@ body.psp-fullpage { overflow: hidden; }
 .psp-filter-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: #fff;
   border-bottom: 1px solid var(--psp-border);
-  padding: 7px 20px;
+  padding: 6px 20px;
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .psp-filter-label { font-size: .72rem; font-weight: 700; color: #bbb; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
 .psp-filter-select {
@@ -132,9 +132,12 @@ body.psp-fullpage { overflow: hidden; }
   font-size: .8rem;
   color: var(--psp-gray);
   background: #fff;
-  min-width: 160px;
+  width: auto;
+  min-width: 120px;
+  max-width: 200px;
   cursor: pointer;
   transition: border-color .15s;
+  flex-shrink: 0;
 }
 .psp-filter-select:focus { outline: none; border-color: var(--psp-pink); box-shadow: 0 0 0 2px rgba(211,23,117,.08); }
 .psp-filter-clear {
