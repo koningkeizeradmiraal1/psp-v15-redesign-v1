@@ -7,14 +7,14 @@
   --psp-pink-dark: #b8116b;
   --psp-pink-lt:   #fce8f2;
   --psp-pink-mlt:  #fff0f7;
-  --psp-green:     #27ae60;
-  --psp-green-lt:  #e8f8f0;
-  --psp-gray:      #4b494a;
-  --psp-gray-lt:   #f7f7f7;
-  --psp-border:    #e8e8e8;
-  --psp-shadow:    0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
-  --psp-shadow-md: 0 4px 24px rgba(0,0,0,.10);
-  --psp-radius:    10px;
+  --psp-green:     #16a34a;
+  --psp-green-lt:  #dcfce7;
+  --psp-gray:      #111827;
+  --psp-gray-lt:   #f8fafc;
+  --psp-border:    #e5e7eb;
+  --psp-shadow:    0 1px 3px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.06);
+  --psp-shadow-md: 0 8px 32px rgba(0,0,0,.12);
+  --psp-radius:    14px;
   --psp-adminbar:  0px;
 }
 
@@ -35,12 +35,13 @@ body.psp-fullpage { overflow: hidden; }
   top: var(--psp-adminbar);
   left: 0; right: 0; bottom: 0;
   z-index: 9990;
-  background: #f4f4f6;
+  background: #f0f2f7;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
   color: var(--psp-gray);
+  font-size: 14px;
 }
 #psp-dashboard * { box-sizing: border-box; }
 
@@ -51,37 +52,41 @@ body.psp-fullpage { overflow: hidden; }
   gap: 16px;
   background: #fff;
   border-bottom: 1px solid var(--psp-border);
-  padding: 10px 20px;
+  padding: 0 24px;
+  height: 56px;
   flex-shrink: 0;
   flex-wrap: wrap;
-  box-shadow: 0 1px 0 #e8e8e8, 0 2px 8px rgba(0,0,0,.04);
+  box-shadow: 0 1px 0 var(--psp-border), 0 2px 12px rgba(0,0,0,.04);
   position: relative;
   z-index: 10;
 }
 .psp-dash-logo {
   font-weight: 800;
-  font-size: .92rem;
-  letter-spacing: -.01em;
+  font-size: 1rem;
+  letter-spacing: -.02em;
   color: var(--psp-pink);
   white-space: nowrap;
   flex-shrink: 0;
+  padding-right: 16px;
+  border-right: 1.5px solid var(--psp-border);
 }
 
 .psp-dash-tabs { display: flex; gap: 2px; flex: 1; }
 .psp-tab {
   background: none;
   border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: .82rem;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: .84rem;
   font-weight: 600;
-  color: #999;
+  color: #9ca3af;
   cursor: pointer;
   transition: color .15s, background .15s;
   white-space: nowrap;
+  letter-spacing: -.01em;
 }
 .psp-tab:hover { color: var(--psp-pink); background: var(--psp-pink-lt); }
-.psp-tab.active { background: var(--psp-pink); color: #fff; }
+.psp-tab.active { background: var(--psp-pink); color: #fff; box-shadow: 0 2px 8px rgba(211,23,117,.25); }
 
 .psp-dash-week-nav {
   display: flex;
@@ -91,21 +96,22 @@ body.psp-fullpage { overflow: hidden; }
 }
 .psp-week-label {
   font-weight: 700;
-  font-size: .8rem;
-  min-width: 140px;
+  font-size: .84rem;
+  min-width: 150px;
   text-align: center;
   color: var(--psp-gray);
+  letter-spacing: -.01em;
 }
 .psp-btn-icon {
-  background: #fff;
+  background: #f8fafc;
   border: 1px solid var(--psp-border);
-  border-radius: 6px;
-  width: 28px; height: 28px;
+  border-radius: 8px;
+  width: 30px; height: 30px;
   cursor: pointer;
   font-size: .8rem;
   transition: all .15s;
   display: flex; align-items: center; justify-content: center;
-  color: #888;
+  color: #6b7280;
 }
 .psp-btn-icon:hover {
   background: var(--psp-pink-lt);
@@ -193,11 +199,12 @@ body.psp-fullpage { overflow: hidden; }
 }
 .psp-sidebar-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--psp-border);
   flex-shrink: 0;
+  background: #fafbfc;
 }
-.psp-sidebar-header h3 { margin: 0; font-size: .82rem; font-weight: 700; color: var(--psp-gray); }
+.psp-sidebar-header h3 { margin: 0; font-size: .86rem; font-weight: 700; color: var(--psp-gray); letter-spacing: -.01em; }
 .psp-diensten-lijst {
   flex: 1; overflow-y: auto; padding: 8px; min-height: 0;
 }
@@ -205,20 +212,20 @@ body.psp-fullpage { overflow: hidden; }
 /* Dienst card sidebar */
 .psp-dienst-card {
   border: 1px solid var(--psp-border);
-  border-radius: 8px;
-  padding: 9px 11px;
-  margin-bottom: 6px;
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin-bottom: 7px;
   cursor: pointer;
-  transition: box-shadow .15s, border-color .15s;
+  transition: box-shadow .15s, border-color .15s, transform .1s;
   position: relative;
-  font-size: .82rem;
+  font-size: .84rem;
   background: #fff;
 }
-.psp-dienst-card:hover { border-color: var(--psp-pink); box-shadow: 0 2px 8px rgba(211,23,117,.08); }
+.psp-dienst-card:hover { border-color: var(--psp-pink); box-shadow: 0 4px 12px rgba(211,23,117,.10); transform: translateY(-1px); }
 .psp-dienst-card.vervuld { border-color: var(--psp-green); background: var(--psp-green-lt); }
 .psp-dienst-card.selected { border-color: var(--psp-pink); background: var(--psp-pink-lt); }
-.psp-dienst-card-title { font-weight: 700; margin-bottom: 2px; }
-.psp-dienst-card-meta  { font-size: .72rem; color: #999; line-height: 1.4; }
+.psp-dienst-card-title { font-weight: 700; margin-bottom: 3px; letter-spacing: -.01em; }
+.psp-dienst-card-meta  { font-size: .74rem; color: #9ca3af; line-height: 1.5; }
 .psp-dienst-card-badge {
   display: inline-block;
   font-size: .62rem; font-weight: 700;
@@ -239,47 +246,47 @@ body.psp-fullpage { overflow: hidden; }
 /* ── Grid area ── */
 .psp-grid-area {
   display: flex; flex-direction: column; overflow: hidden;
-  background: #f4f4f6; min-height: 0;
+  background: #f0f2f7; min-height: 0;
 }
-.psp-grid-wrap { flex: 1; overflow: auto; min-height: 0; padding: 12px; }
+.psp-grid-wrap { flex: 1; overflow: auto; min-height: 0; padding: 16px; }
 
 /* Grid table */
 .psp-grid {
   width: 100%; border-collapse: separate; border-spacing: 0;
-  font-size: .8rem; min-width: 600px;
+  font-size: .84rem; min-width: 600px;
   background: #fff; border-radius: var(--psp-radius);
   box-shadow: var(--psp-shadow);
 }
 .psp-grid thead { position: sticky; top: 0; z-index: 5; }
 .psp-grid th {
-  background: #f7f7f8;
-  color: #888;
-  padding: 9px 6px;
+  background: #f8fafc;
+  color: #6b7280;
+  padding: 11px 8px;
   text-align: center;
-  font-size: .7rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .05em;
+  font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
   white-space: nowrap;
-  border-bottom: 2px solid var(--psp-border);
+  border-bottom: 1px solid var(--psp-border);
 }
 .psp-grid th.psp-col-naam {
   text-align: left;
-  min-width: 150px;
+  min-width: 160px;
   position: sticky; left: 0; z-index: 6;
-  background: #f0f0f2;
+  background: #f1f4f8;
 }
 .psp-grid td {
-  border-bottom: 1px solid #f0f0f0;
-  border-right: 1px solid #f0f0f0;
-  padding: 6px;
+  border-bottom: 1px solid #f3f4f6;
+  border-right: 1px solid #f3f4f6;
+  padding: 8px;
   vertical-align: top;
 }
 .psp-grid td.psp-col-naam {
   position: sticky; left: 0;
   background: #fff; z-index: 1;
-  box-shadow: 2px 0 4px rgba(0,0,0,.04);
+  box-shadow: 2px 0 6px rgba(0,0,0,.04);
 }
-.psp-grid tr:hover td { background: #fafafa; }
-.psp-grid tr:hover td.psp-col-naam { background: #f8f8f8; }
+.psp-grid tr:hover td { background: #fafbfd; }
+.psp-grid tr:hover td.psp-col-naam { background: #f8f9fb; }
 
 .psp-cell { text-align: center; min-width: 100px; }
 .psp-cell-leeg        { background: #fafafa !important; }
@@ -346,18 +353,18 @@ body.psp-fullpage { overflow: hidden; }
   box-shadow: var(--psp-shadow); font-size: .82rem;
 }
 .psp-table th {
-  background: #f7f7f8; color: #888;
-  padding: 9px 12px; text-align: left;
-  font-size: .7rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .05em;
-  border-bottom: 2px solid var(--psp-border);
+  background: #f8fafc; color: #6b7280;
+  padding: 11px 14px; text-align: left;
+  font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: 1px solid var(--psp-border);
 }
 .psp-table td {
-  padding: 9px 12px;
-  border-top: 1px solid #f0f0f0;
+  padding: 11px 14px;
+  border-top: 1px solid #f3f4f6;
   vertical-align: middle;
 }
-.psp-table tr:hover td { background: var(--psp-gray-lt); }
+.psp-table tr:hover td { background: #fafbfd; }
 .psp-status-badge {
   display: inline-block; padding: 3px 9px;
   border-radius: 20px; font-size: .68rem; font-weight: 700;
@@ -379,74 +386,77 @@ body.psp-fullpage { overflow: hidden; }
 /* ── Knoppen ── */
 .psp-btn-primary {
   background: var(--psp-pink); color: #fff;
-  border: none; border-radius: 6px;
-  padding: 7px 14px; font-size: .82rem; font-weight: 700;
-  cursor: pointer; transition: background .15s;
+  border: none; border-radius: 8px;
+  padding: 8px 16px; font-size: .84rem; font-weight: 700;
+  cursor: pointer; transition: background .15s, box-shadow .15s;
+  letter-spacing: -.01em;
+  box-shadow: 0 2px 6px rgba(211,23,117,.2);
 }
-.psp-btn-primary:hover { background: var(--psp-pink-dark); }
+.psp-btn-primary:hover { background: var(--psp-pink-dark); box-shadow: 0 4px 12px rgba(211,23,117,.3); }
 .psp-btn-ghost {
-  background: none; color: var(--psp-gray);
-  border: 1px solid var(--psp-border); border-radius: 6px;
-  padding: 7px 14px; font-size: .82rem; font-weight: 600; cursor: pointer;
-  transition: background .15s;
+  background: #fff; color: #374151;
+  border: 1px solid var(--psp-border); border-radius: 8px;
+  padding: 8px 16px; font-size: .84rem; font-weight: 600; cursor: pointer;
+  transition: background .15s, border-color .15s;
 }
-.psp-btn-ghost:hover { background: var(--psp-gray-lt); }
+.psp-btn-ghost:hover { background: #f3f4f6; border-color: #d1d5db; }
 .psp-btn-danger {
-  background: none; color: #c0392b; border: 1px solid #e0b0b0;
-  border-radius: 6px; padding: 7px 14px; font-size: .82rem; cursor: pointer;
+  background: none; color: #dc2626; border: 1px solid #fca5a5;
+  border-radius: 8px; padding: 8px 16px; font-size: .84rem; cursor: pointer;
   margin-left: auto; transition: background .15s;
 }
-.psp-btn-danger:hover { background: #fef0ee; }
+.psp-btn-danger:hover { background: #fef2f2; border-color: #f87171; }
 
 /* ── Modals ── */
 .psp-modal {
   position: fixed; inset: 0; z-index: 99999;
-  background: rgba(30,20,30,.45);
+  background: rgba(15,10,20,.5);
   display: flex; align-items: center; justify-content: center; padding: 16px;
   animation: psp-fadein .15s ease;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
 }
 .psp-modal-box {
-  background: #fff; border-radius: 14px;
+  background: #fff; border-radius: 18px;
   width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 24px 80px rgba(0,0,0,.22);
+  box-shadow: 0 32px 80px rgba(0,0,0,.22), 0 0 0 1px rgba(0,0,0,.04);
 }
-.psp-modal-sm { max-width: 400px; }
+.psp-modal-sm { max-width: 420px; }
 .psp-modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid var(--psp-border);
+  padding: 18px 22px; border-bottom: 1px solid var(--psp-border);
   position: sticky; top: 0; background: #fff; z-index: 1;
-  border-radius: 14px 14px 0 0;
+  border-radius: 18px 18px 0 0;
 }
-.psp-modal-header h2 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -.01em; }
+.psp-modal-header h2 { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; }
 .psp-modal-close {
-  background: none; border: none; font-size: 1rem; cursor: pointer;
-  color: #bbb; padding: 4px 6px; border-radius: 5px; transition: all .15s;
+  background: #f3f4f6; border: none; font-size: .9rem; cursor: pointer;
+  color: #6b7280; padding: 6px 8px; border-radius: 8px; transition: all .15s;
+  line-height: 1;
 }
-.psp-modal-close:hover { color: var(--psp-gray); background: #f5f5f5; }
-.psp-modal-body { padding: 18px 20px; }
+.psp-modal-close:hover { color: var(--psp-gray); background: #e5e7eb; }
+.psp-modal-body { padding: 20px 22px; }
 .psp-modal-footer {
-  display: flex; gap: 8px; padding: 12px 20px;
-  border-top: 1px solid var(--psp-border); background: var(--psp-gray-lt);
-  border-radius: 0 0 14px 14px;
+  display: flex; gap: 8px; padding: 14px 22px;
+  border-top: 1px solid var(--psp-border); background: #f9fafb;
+  border-radius: 0 0 18px 18px;
 }
 
 .psp-form-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .psp-form-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .psp-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-.psp-field label { font-size: .72rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .05em; }
+.psp-field label { font-size: .73rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
 .psp-field input,
 .psp-field select,
 .psp-field textarea {
-  border: 1px solid var(--psp-border); border-radius: 7px;
-  padding: 8px 10px; font-size: .875rem; color: var(--psp-gray);
+  border: 1.5px solid #e5e7eb; border-radius: 9px;
+  padding: 9px 12px; font-size: .9rem; color: var(--psp-gray);
   background: #fff; transition: border-color .2s, box-shadow .2s; width: 100%;
 }
 .psp-field input:focus,
 .psp-field select:focus,
 .psp-field textarea:focus {
   outline: none; border-color: var(--psp-pink);
-  box-shadow: 0 0 0 3px rgba(211,23,117,.08);
+  box-shadow: 0 0 0 3px rgba(211,23,117,.10);
 }
 
 /* Koppel modal */
@@ -454,8 +464,8 @@ body.psp-fullpage { overflow: hidden; }
 .psp-koppel-opties { display: flex; flex-direction: column; gap: 6px; }
 .psp-koppel-optie {
   display: flex; align-items: center; justify-content: space-between;
-  border: 1px solid var(--psp-border); border-radius: 8px;
-  padding: 9px 13px; cursor: pointer; transition: all .15s; background: #fff;
+  border: 1.5px solid var(--psp-border); border-radius: 10px;
+  padding: 11px 14px; cursor: pointer; transition: all .15s; background: #fff;
 }
 .psp-koppel-optie:hover { border-color: var(--psp-pink); background: var(--psp-pink-lt); }
 .psp-koppel-optie-info { font-size: .82rem; }
@@ -477,13 +487,14 @@ body.psp-fullpage { overflow: hidden; }
 
 /* ── Toast ── */
 #psp-toast {
-  position: fixed; bottom: 20px; right: 20px; z-index: 99999;
-  background: var(--psp-gray); color: #fff;
-  padding: 10px 18px; border-radius: 8px;
-  font-size: .82rem; font-weight: 600;
-  box-shadow: 0 8px 32px rgba(0,0,0,.18);
-  transition: opacity .3s, transform .3s;
-  opacity: 0; transform: translateY(8px); pointer-events: none;
+  position: fixed; bottom: 24px; right: 24px; z-index: 99999;
+  background: #111827; color: #fff;
+  padding: 11px 20px; border-radius: 10px;
+  font-size: .84rem; font-weight: 600;
+  box-shadow: 0 8px 32px rgba(0,0,0,.22);
+  transition: opacity .25s, transform .25s;
+  opacity: 0; transform: translateY(10px); pointer-events: none;
+  letter-spacing: -.01em;
 }
 #psp-toast.show  { opacity: 1; transform: none; }
 #psp-toast.success { background: var(--psp-green); }
