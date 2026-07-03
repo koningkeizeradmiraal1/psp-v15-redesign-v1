@@ -105,6 +105,19 @@ class PSP_DB {
             bijgewerkt_op   datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY naam (naam)
+        ) $charset;
+
+        CREATE TABLE " . PSP_TABLE_EVENEMENTEN . " (
+            id              bigint(20)   NOT NULL AUTO_INCREMENT,
+            datum           date         NOT NULL,
+            opdrachtgever   varchar(255) NOT NULL DEFAULT \'\',
+            medewerker      varchar(255) NOT NULL DEFAULT \'\',
+            dienst_info     text         NOT NULL,
+            notities        text         DEFAULT \'\',
+            aangemaakt_op   datetime     DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY datum (datum),
+            KEY opdrachtgever (opdrachtgever(100))
         ) $charset;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';

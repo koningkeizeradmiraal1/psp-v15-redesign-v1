@@ -66,6 +66,7 @@
         if (panel) panel.style.display = '';
         if (btn.dataset.tab === 'diensten')  renderDienstenTabel();
         if (btn.dataset.tab === 'studenten') renderStudentenTabel();
+    if (btn.dataset.tab === 'evenementen' && !_evLoaded) initEvenementenTab();
         if (btn.dataset.tab === 'inplannen') renderInplannenView();
         if (btn.dataset.tab === 'beheer')    initBeheerTab();
       });
@@ -1796,5 +1797,182 @@
       wrap.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
     });
   }
+
+  /* ══════════════════════════════════════════════════════════════
+     EVENEMENTEN TAB
+  ══════════════════════════════════════════════════════════════ */
+  var _evLoaded = false;
+  var _evFilter = '';
+
+  function initEvenementenTab() {
+    _evLoaded = true;
+
+    // Filter dropdown
+    document.getElementById('psp-ev-filter-og').addEventListener('change', function() {
+      _evFilter = this.value;
+      loadEvenementen();
+    });
+
+    // Nieuw-knop
+    document.getElementById('psp-ev-nieuw-btn').addEventListener('click', function() {
+      openEvModal(null);
+    });
+
+    // Opslaan
+    document.getElementById('psp-ev-opslaan-btn').addEventListener('click', saveEvenement);
+
+    // Verwijderen
+    document.getElementById('psp-ev-verwijder-btn').addEventListener('click', function() {
+      var id = document.getElementById('psp-ev-id').value;
+      if (!id || !confirm('Weet je zeker dat je dit evenement wilt verwijderen?')) return;
+      ajax('psp_delete_evenement', {id: id}, function() {
+        closeModal('psp-modal-evenement');
+        loadEvenementen();
+        toast('Evenement verwijderd.');
+      });
+    });
+
+    loadEvenementen();
+  }
+
+  function loadEvenementen() {
+    ajax('psp_get_evenementen', {og: _evFilter}, function(data) {
+      // Update filter dropdown
+      var sel = document.getElementById('psp-ev-filter-og');
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">— Alle —</option>';
+      (data.opdrachtgevers || []).forEach(function(og) {
+        var opt = document.createElement('option');
+        opt.value = og; opt.textContent = og;
+        if (og === cur) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      renderEvenementen(data.items || []);
+    });
+  }
+
+  function renderEvenementen(items) {
+    var lijst = document.getElementById('psp-ev-lijst');
+    var count = document.getElementById('psp-ev-count');
+    if (!items.length) {
+      lijst.innerHTML = '<p class="psp-empty-msg">Geen komende evenementen.</p>';
+      count.textContent = '';
+      return;
+    }
+    count.textContent = items.length + ' evenement' + (items.length !== 1 ? 'en' : '');
+
+    // Groepeer op ISO-week
+    var weken = {};
+    items.forEach(function(item) {
+      var w = getISOWeekKey(item.datum);
+      if (!weken[w]) weken[w] = {label: getISOWeekLabel(item.datum), ogs: {}};
+      var og = item.opdrachtgever || '(geen)';
+      if (!weken[w].ogs[og]) weken[w].ogs[og] = [];
+      weken[w].ogs[og].push(item);
+    });
+
+    var html = '';
+    Object.keys(weken).sort().forEach(function(wk) {
+      var week = weken[wk];
+      html += '<div class="psp-ev-week-header">' + escHtml(week.label) + '</div>';
+      Object.keys(week.ogs).sort().forEach(function(og) {
+        html += '<div class="psp-ev-og-naam">' + escHtml(og) + '</div>';
+        html += '<table class="psp-ev-tabel"><thead><tr>';
+        html += '<th>Datum</th><th>Medewerker</th><th>Dienst</th><th>Notities</th><th></th>';
+        html += '</tr></thead><tbody>';
+        week.ogs[og].forEach(function(item) {
+          var med = item.medewerker
+            ? escHtml(item.medewerker)
+            : '<span class="psp-ev-med-leeg">Nog in te vullen</span>';
+          html += '<tr>';
+          html += '<td>' + formatDatumNL(item.datum) + '</td>';
+          html += '<td>' + med + '</td>';
+          html += '<td>' + escHtml(item.dienst_info) + '</td>';
+          html += '<td>' + escHtml(item.notities || '') + '</td>';
+          html += '<td><button class="psp-ev-edit-btn" data-id="' + item.id + '" title="Bewerken">&#9998;</button></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      });
+    });
+    lijst.innerHTML = html;
+
+    // Edit buttons
+    lijst.querySelectorAll('.psp-ev-edit-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = parseInt(this.dataset.id);
+        var item = items.find(function(i) { return parseInt(i.id) === id; });
+        if (item) openEvModal(item);
+      });
+    });
+  }
+
+  function openEvModal(item) {
+    document.getElementById('psp-modal-ev-title').textContent = item ? 'Evenement bewerken' : 'Nieuw evenement';
+    document.getElementById('psp-ev-id').value      = item ? item.id        : '';
+    document.getElementById('psp-ev-datum').value   = item ? item.datum     : '';
+    document.getElementById('psp-ev-og').value      = item ? item.opdrachtgever : '';
+    document.getElementById('psp-ev-medewerker').value = item ? item.medewerker : '';
+    document.getElementById('psp-ev-info').value    = item ? item.dienst_info : '';
+    document.getElementById('psp-ev-notities').value = item ? item.notities  : '';
+    document.getElementById('psp-ev-verwijder-btn').style.display = item ? '' : 'none';
+    openModal('psp-modal-evenement');
+  }
+
+  function saveEvenement() {
+    var id   = document.getElementById('psp-ev-id').value;
+    var datum = document.getElementById('psp-ev-datum').value;
+    if (!datum) { alert('Vul een datum in.'); return; }
+    var payload = {
+      id:             id,
+      datum:          datum,
+      opdrachtgever:  document.getElementById('psp-ev-og').value,
+      medewerker:     document.getElementById('psp-ev-medewerker').value,
+      dienst_info:    document.getElementById('psp-ev-info').value,
+      notities:       document.getElementById('psp-ev-notities').value,
+    };
+    ajax('psp_save_evenement', payload, function() {
+      closeModal('psp-modal-evenement');
+      loadEvenementen();
+      toast(id ? 'Evenement bijgewerkt.' : 'Evenement aangemaakt.');
+    });
+  }
+
+  function getISOWeekKey(dateStr) {
+    var d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    var y = d.getFullYear();
+    var w = Math.ceil(((d - new Date(y, 0, 1)) / 86400000 + 1) / 7);
+    return y + '-' + String(w).padStart(2, '0');
+  }
+
+  function getISOWeekLabel(dateStr) {
+    var d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    var day = d.getDay() || 7;
+    d.setDate(d.getDate() + 4 - day);
+    var y = d.getFullYear();
+    var w = Math.ceil(((d - new Date(y, 0, 1)) / 86400000 + 1) / 7);
+    // Monday of that week
+    var mon = new Date(d); mon.setDate(d.getDate() - 3);
+    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    var fmt = function(dt) {
+      return dt.getDate() + ' ' + ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][dt.getMonth()];
+    };
+    return 'Week ' + w + ' (' + y + ')  •  ' + fmt(mon) + ' – ' + fmt(sun);
+  }
+
+  function formatDatumNL(dateStr) {
+    var d = new Date(dateStr + 'T00:00:00');
+    var dag = ['zo','ma','di','wo','do','vr','za'][d.getDay()];
+    var mnd = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][d.getMonth()];
+    return dag + ' ' + d.getDate() + ' ' + mnd;
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
 
 })();
