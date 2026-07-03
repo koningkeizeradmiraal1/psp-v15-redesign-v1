@@ -490,7 +490,7 @@ class PSP_DB {
         );
     }
 
-    /* ══════ Opdrachtgevers ══════ */
+    /* ═════ Opdrachtgevers ═════ */
 
     public static function get_opdrachtgevers() {
         global $wpdb;

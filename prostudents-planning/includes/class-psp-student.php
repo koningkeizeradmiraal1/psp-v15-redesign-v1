@@ -179,4 +179,5 @@ class PSP_Student {
         if ( $ok === false ) wp_send_json_error( array( 'message' => 'Bevestigen mislukt.' ) );
         wp_send_json_success( array( 'message' => '✓ Bevestigd.' ) );
     }
+
 }
