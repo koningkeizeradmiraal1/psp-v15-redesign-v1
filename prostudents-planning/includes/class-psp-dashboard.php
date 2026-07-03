@@ -31,6 +31,9 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_get_opdrachtgevers',     [self::class, 'ajax_get_opdrachtgevers']);
         add_action('wp_ajax_psp_save_opdrachtgever',     [self::class, 'ajax_save_opdrachtgever']);
         add_action('wp_ajax_psp_delete_opdrachtgever',   [self::class, 'ajax_delete_opdrachtgever']);
+        add_action('wp_ajax_psp_get_evenementen',         [self::class, 'ajax_get_evenementen']);
+        add_action('wp_ajax_psp_save_evenement',          [self::class, 'ajax_save_evenement']);
+        add_action('wp_ajax_psp_delete_evenement',        [self::class, 'ajax_delete_evenement']);
     }
 
     /* ─────────────── Shortcode ─────────────── */
@@ -72,6 +75,7 @@ class PSP_Dashboard {
       <button class="psp-tab" data-tab="diensten">Diensten</button>
       <button class="psp-tab" data-tab="studenten">Beschikbaarheid</button>
       <button class="psp-tab" data-tab="inplannen">Inplannen</button>
+      <button class="psp-tab" data-tab="evenementen">&#127973; Evenementen</button>
       <button class="psp-tab" data-tab="beheer">&#9881; Beheer <span id="psp-tarieven-badge" style="display:none;background:#e53935;color:#fff;border-radius:10px;font-size:.65rem;font-weight:700;padding:1px 6px;margin-left:2px;vertical-align:middle"></span></button>
     </div>
     <div class="psp-dash-week-nav">
@@ -234,6 +238,48 @@ class PSP_Dashboard {
     </div>
   </div>
 
+
+  <!-- TAB: Evenementen -->
+  <div id="psp-tab-evenementen" class="psp-tab-panel" style="display:none">
+    <div class="psp-ev-toolbar">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label class="psp-filter-label">Opdrachtgever:</label>
+        <select id="psp-ev-filter-og" class="psp-filter-select">
+          <option value="">— Alle —</option>
+        </select>
+        <button class="psp-btn-primary psp-btn-sm" id="psp-ev-nieuw-btn">+ Nieuw</button>
+      </div>
+      <span id="psp-ev-count" style="font-size:.78rem;color:#9ca3af;"></span>
+    </div>
+    <div id="psp-ev-lijst" class="psp-ev-lijst">
+      <p class="psp-empty-msg">Laden...</p>
+    </div>
+  </div>
+
+  <!-- Modal: Evenement bewerken -->
+  <div id="psp-modal-evenement" class="psp-modal" style="display:none">
+    <div class="psp-modal-box psp-modal-sm">
+      <div class="psp-modal-header">
+        <h2 id="psp-modal-ev-title">Evenement</h2>
+        <button class="psp-modal-close" data-modal="psp-modal-evenement">✕</button>
+      </div>
+      <div class="psp-modal-body">
+        <input type="hidden" id="psp-ev-id" value="">
+        <div class="psp-form-row2">
+          <div class="psp-field"><label>Datum</label><input type="date" id="psp-ev-datum"></div>
+          <div class="psp-field"><label>Opdrachtgever</label><input type="text" id="psp-ev-og" list="psp-og-list"></div>
+        </div>
+        <div class="psp-field"><label>Medewerker</label><input type="text" id="psp-ev-medewerker" placeholder="Naam of 'Nog in te vullen'"></div>
+        <div class="psp-field"><label>Dienst / tijden</label><input type="text" id="psp-ev-info" placeholder="bijv. 09:00 - 17:00 uur Catering"></div>
+        <div class="psp-field"><label>Notities</label><textarea id="psp-ev-notities" rows="2" style="resize:vertical"></textarea></div>
+      </div>
+      <div class="psp-modal-footer">
+        <button class="psp-btn-primary" id="psp-ev-opslaan-btn">Opslaan</button>
+        <button class="psp-btn-ghost psp-modal-close" data-modal="psp-modal-evenement">Annuleren</button>
+        <button class="psp-btn-danger" id="psp-ev-verwijder-btn" style="display:none">Verwijderen</button>
+      </div>
+    </div>
+  </div>
 
   <!-- TAB: Beheer -->
   <div id="psp-tab-beheer" class="psp-tab-panel" style="display:none">
@@ -1278,51 +1324,69 @@ class PSP_Dashboard {
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
         $user_id = (int) ( $_POST['user_id'] ?? 0 );
-        $user    = get_user_by( 'id', $user_id );
+        $user    = get_user_by( ''id', $user_id );
         if ( ! $user ) wp_send_json_error( array( 'message' => 'Gebruiker niet gevonden.' ) );
 
-        $naam = $user->display_name;
-        require_once ABSPATH . 'wp-admin/includes/user.php';
-        wp_delete_user( $user_id );
+        $user->set_role( 'psp_aanvraag' );
+        update_user_meta( $user_id, 'psp_status', 'afgewezen' );
 
-        wp_send_json_success( array( 'message' => "{$naam} afgewezen en verwijderd." ) );
+        wp_send_json_success( array( 'message' => "✗ {$user->display_name} afgewezen." ) );
     }
 
-    /* ─────────────── AJAX: opdrachtgevers ophalen ─────────────── */
-    public static function ajax_get_opdrachtgevers() {
+    /* ═══════════════════════════════════════════════════════════════
+       AJAX: Evenementen
+    ═══════════════════════════════════════════════════════════════ */
+
+    public static function ajax_get_evenementen() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        wp_send_json_success( PSP_DB::get_opdrachtgevers() );
+        global $wpdb;
+        $tbl = PSP_TABLE_EVENEMENTEN;
+        $og  = sanitize_text_field( $_POST['og'] ?? '' );
+        if ( $og ) {
+            $rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT * FROM $tbl WHERE datum >= CURDATE() AND opdrachtgever = %s ORDER BY datum ASC, medewerker ASC",
+                $og
+            ) );
+        } else {
+            $rows = $wpdb->get_results(
+                "SELECT * FROM $tbl WHERE datum >= CURDATE() ORDER BY datum ASC, opdrachtgever ASC, medewerker ASC"
+            );
+        }
+        // Also return distinct opdrachtgevers for filter dropdown
+        $ogs = $wpdb->get_col( "SELECT DISTINCT opdrachtgever FROM $tbl WHERE datum >= CURDATE() ORDER BY opdrachtgever ASC" );
+        wp_send_json_success( array( 'items' => $rows, 'opdrachtgevers' => $ogs ) );
     }
 
-    /* ─────────────── AJAX: opdrachtgever opslaan ─────────────── */
-    public static function ajax_save_opdrachtgever() {
+    public static function ajax_save_evenement() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-
-        $id   = (int) ( $_POST['id'] ?? 0 );
+        global $wpdb;
+        $tbl = PSP_TABLE_EVENEMENTEN;
+        $id  = (int) ( $_POST['id'] ?? 0 );
         $data = array(
-            'naam'          => sanitize_text_field( $_POST['naam']          ?? '' ),
-            'contactpersoon'=> sanitize_text_field( $_POST['contactpersoon']?? '' ),
-            'email'         => sanitize_email(      $_POST['email']         ?? '' ),
-            'telefoon'      => sanitize_text_field( $_POST['telefoon']      ?? '' ),
-            'adres'         => sanitize_text_field( $_POST['adres']         ?? '' ),
-            'notities'      => sanitize_textarea_field( $_POST['notities']  ?? '' ),
+            'datum'         => sanitize_text_field( $_POST['datum'] ?? '' ),
+            'opdrachtgever' => sanitize_text_field( $_POST['opdrachtgever'] ?? '' ),
+            'medewerker'    => sanitize_text_field( $_POST['medewerker'] ?? '' ),
+            'dienst_info'   => sanitize_text_field( $_POST['dienst_info'] ?? '' ),
+            'notities'      => sanitize_textarea_field( $_POST['notities'] ?? '' ),
         );
-        if ( ! $data['naam'] ) wp_send_json_error( array( 'message' => 'Naam is verplicht.' ) );
-        if ( $id ) $data['id'] = $id;
-        $ok = PSP_DB::save_opdrachtgever( $data );
-        if ( $ok === false ) wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
-        wp_send_json_success( array( 'message' => "✓ Opgeslagen.", 'lijst' => PSP_DB::get_opdrachtgevers() ) );
+        if ( $id ) {
+            $wpdb->update( $tbl, $data, array( 'id' => $id ) );
+        } else {
+            $wpdb->insert( $tbl, $data );
+            $id = $wpdb->insert_id;
+        }
+        wp_send_json_success( array( 'id' => $id ) );
     }
 
-    /* ─────────────── AJAX: opdrachtgever verwijderen ─────────────── */
-    public static function ajax_delete_opdrachtgever() {
+    public static function ajax_delete_evenement() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+        global $wpdb;
         $id = (int) ( $_POST['id'] ?? 0 );
-        if ( ! $id ) wp_send_json_error();
-        PSP_DB::delete_opdrachtgever( $id );
-        wp_send_json_success( array( 'message' => 'Verwijderd.', 'lijst' => PSP_DB::get_opdrachtgevers() ) );
+        $wpdb->delete( PSP_TABLE_EVENEMENTEN, array( 'id' => $id ) );
+        wp_send_json_success();
     }
+
 }

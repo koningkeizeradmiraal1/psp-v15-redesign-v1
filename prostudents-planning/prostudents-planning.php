@@ -19,6 +19,7 @@ define('PSP_TABLE_TARIEVEN',        $GLOBALS['wpdb']->prefix . 'ps_tarieven');
 define('PSP_TABLE_WB_TEMPLATES',    $GLOBALS['wpdb']->prefix . 'ps_wb_templates');
 define('PSP_TABLE_WERKBEVESTIGINGEN', $GLOBALS['wpdb']->prefix . 'ps_werkbevestigingen');
 define('PSP_TABLE_OPDRACHTGEVERS',  $GLOBALS['wpdb']->prefix . 'ps_opdrachtgevers');
+define('PSP_TABLE_EVENEMENTEN',     $GLOBALS['wpdb']->prefix . 'ps_evenementen');
 
 /* ── Activeren ── */
 register_activation_hook(__FILE__, 'psp_activate');
