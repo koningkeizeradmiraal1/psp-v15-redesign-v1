@@ -6,7 +6,7 @@
  */
 if (($_GET['sleutel'] ?? '') !== 'pspev2026') { http_response_code(403); exit('Verboden.'); }
 
-require_once dirname(__DIR__) . '/wp-load.php';
+require_once dirname(dirname(dirname(__DIR__))) . '/wp-load.php';
 global $wpdb;
 $tbl = $wpdb->prefix . 'ps_evenementen';
 
