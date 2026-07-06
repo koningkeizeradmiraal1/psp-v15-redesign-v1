@@ -787,4 +787,54 @@ body.psp-fullpage { overflow: hidden; }
   color: #d1d5db; font-size: .9rem; padding: 2px 4px;
   border-radius: 4px; transition: color .15s;
 }
+
+.psp-ev-edit-btn {
+  background: none; border: none; cursor: pointer;
+  color: #d1d5db; font-size: .9rem; padding: 2px 4px;
+  border-radius: 4px; transition: color .15s;
+}
 .psp-ev-edit-btn:hover { color: var(--psp-pink); }
+
+/* Weekrooster evenementen-strip */
+.psp-week-ev-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  background: #1e1e2e;
+  border: 1px solid #2d2d3f;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  font-size: .8rem;
+}
+.psp-week-ev-label {
+  color: var(--psp-pink);
+  font-weight: 600;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+.psp-week-ev-dag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.psp-week-ev-dag-datum {
+  color: #9ca3af;
+  font-size: .75rem;
+  white-space: nowrap;
+}
+.psp-week-ev-og {
+  background: rgba(211,23,117,.15);
+  color: #f0abcb;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: .75rem;
+  white-space: nowrap;
+  cursor: default;
+}
+.psp-week-ev-og em { color: #9ca3af; font-style: normal; }

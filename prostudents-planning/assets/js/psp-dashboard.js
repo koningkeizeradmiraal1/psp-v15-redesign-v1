@@ -84,8 +84,44 @@
     ajax('psp_week_data', { week_start: fmt(state.week) }, function (data) {
       state.data = data; state.selectedDienst = null; state.ipDienst = null; state.ipStudent = null;
       updateWeekLabel(); updateFilterDropdown(); applyFilter();
+      loadWeekEvenementenStrip(fmt(state.week));
       setLoader(false);
     }, function () { toast('Laden mislukt.', 'error'); setLoader(false); });
+  }
+
+  function loadWeekEvenementenStrip(weekStart) {
+    ajax('psp_week_evenementen', { week_start: weekStart }, function (data) {
+      renderWeekEvStrip(data.items || []);
+    });
+  }
+
+  function renderWeekEvStrip(items) {
+    var el = document.getElementById('psp-week-ev-strip');
+    if (!el) return;
+    if (!items.length) { el.innerHTML = ''; return; }
+    var byDate = {};
+    items.forEach(function (ev) {
+      if (!byDate[ev.datum]) byDate[ev.datum] = [];
+      byDate[ev.datum].push(ev);
+    });
+    var dates = Object.keys(byDate).sort();
+    var html = '<div class="psp-week-ev-strip"><span class="psp-week-ev-label">🗓 Evenementen</span>';
+    dates.forEach(function (d) {
+      var byOg = {};
+      byDate[d].forEach(function (ev) {
+        if (!byOg[ev.opdrachtgever]) byOg[ev.opdrachtgever] = [];
+        byOg[ev.opdrachtgever].push(ev);
+      });
+      html += '<div class="psp-week-ev-dag"><span class="psp-week-ev-dag-datum">' + esc(formatDatumNL(d)) + '</span>';
+      Object.keys(byOg).sort().forEach(function (og) {
+        var evs = byOg[og];
+        var tip = evs.map(function (e) { return (e.medewerker || '?') + ': ' + e.dienst_info; }).join('\n');
+        html += '<span class="psp-week-ev-og" title="' + esc(tip) + '">' + esc(og) + ' <em>(' + evs.length + '</em>)</span>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
   }
 
   function updateWeekLabel() {

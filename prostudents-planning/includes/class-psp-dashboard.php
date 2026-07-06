@@ -34,6 +34,7 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_get_evenementen',         [self::class, 'ajax_get_evenementen']);
         add_action('wp_ajax_psp_save_evenement',          [self::class, 'ajax_save_evenement']);
         add_action('wp_ajax_psp_delete_evenement',        [self::class, 'ajax_delete_evenement']);
+        add_action('wp_ajax_psp_week_evenementen',        [self::class, 'ajax_week_evenementen']);
     }
 
     /* ─────────────── Shortcode ─────────────── */
@@ -116,6 +117,7 @@ class PSP_Dashboard {
         <div id="psp-diensten-lijst" class="psp-diensten-lijst"><p class="psp-empty-msg">Geen diensten.</p></div>
       </div>
       <div class="psp-grid-area">
+        <div id="psp-week-ev-strip"></div>
         <div id="psp-grid-wrap" class="psp-grid-wrap">
           <p class="psp-empty-msg" style="padding:40px">Geen beschikbaarheid ingediend voor deze week.</p>
         </div>
@@ -1419,5 +1421,20 @@ class PSP_Dashboard {
         if ( ! $id ) wp_send_json_error();
         $wpdb->delete( PSP_TABLE_EVENEMENTEN, array( 'id' => $id ) );
         wp_send_json_success();
+    }
+
+    public static function ajax_week_evenementen() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+        global $wpdb;
+        $tbl   = PSP_TABLE_EVENEMENTEN;
+        $start = sanitize_text_field( $_POST['week_start'] ?? '' );
+        if ( ! $start ) wp_send_json_error();
+        $end   = date( 'Y-m-d', strtotime( $start . ' +6 days' ) );
+        $rows  = $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM $tbl WHERE datum BETWEEN %s AND %s ORDER BY datum ASC, opdrachtgever ASC, medewerker ASC",
+            $start, $end
+        ) );
+        wp_send_json_success( array( 'items' => $rows ) );
     }
 }
