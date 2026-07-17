@@ -276,10 +276,33 @@ class PSP_Dashboard {
     <!-- Subtab: Student accounts -->
     <div id="psp-stab-studenten" class="psp-stab-panel" style="display:none">
       <div class="psp-panel-body">
-        <p style="color:#666;font-size:.87rem;margin:0 0 16px">
-          Maak hier WordPress-accounts aan voor uitzendkrachten. Er worden <strong>geen welkomsmails</strong> verstuurd &mdash; deel de inloggegevens zelf mee.
-        </p>
+        <div class="psp-panel-header" style="margin-bottom:16px">
+          <p style="color:#666;font-size:.87rem;margin:0">
+            Maak hier WordPress-accounts aan voor uitzendkrachten. Er worden <strong>geen welkomsmails</strong> verstuurd &mdash; deel de inloggegevens zelf mee.
+          </p>
+          <button class="psp-btn-primary psp-btn-sm" id="psp-student-nieuw-btn">+ Student toevoegen</button>
+        </div>
         <div id="psp-studenten-accounts-lijst"><p class="psp-empty-msg">Laden&#8230;</p></div>
+      </div>
+    </div>
+
+    <!-- MODAL: Nieuwe student toevoegen -->
+    <div id="psp-modal-nieuwe-student" class="psp-modal" style="display:none">
+      <div class="psp-modal-box psp-modal-sm">
+        <div class="psp-modal-header">
+          <h2>Nieuwe student toevoegen</h2>
+          <button class="psp-modal-close" data-modal="psp-modal-nieuwe-student">&#10005;</button>
+        </div>
+        <form id="psp-student-nieuw-form">
+          <div class="psp-modal-body">
+            <div class="psp-field"><label>Naam</label><input type="text" id="psp-student-nieuw-naam" required></div>
+            <div class="psp-field"><label>E-mailadres</label><input type="email" id="psp-student-nieuw-email" required></div>
+          </div>
+          <div class="psp-modal-footer">
+            <button type="submit" class="psp-btn-primary" id="psp-student-nieuw-opslaan-btn">Account aanmaken</button>
+            <button type="button" class="psp-btn-ghost psp-modal-close" data-modal="psp-modal-nieuwe-student">Annuleren</button>
+          </div>
+        </form>
       </div>
     </div>
 

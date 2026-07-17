@@ -1203,12 +1203,54 @@
      STUDENT ACCOUNTS TAB
   ════════════════════════════════════════════════════ */
   var _studentenGeladen = false;
+  var _studentNieuwInit  = false;
 
   function laadStudentenTab() {
     var el = document.getElementById('psp-studenten-accounts-lijst');
     if (!el) return;
     el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
     _studentenGeladen = false;
+
+    if (!_studentNieuwInit) {
+      _studentNieuwInit = true;
+
+      var nieuwBtn = document.getElementById('psp-student-nieuw-btn');
+      if (nieuwBtn) nieuwBtn.addEventListener('click', function () {
+        document.getElementById('psp-student-nieuw-form').reset();
+        document.getElementById('psp-modal-nieuwe-student').style.display = 'flex';
+      });
+
+      document.querySelectorAll('[data-modal="psp-modal-nieuwe-student"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.getElementById('psp-modal-nieuwe-student').style.display = 'none';
+        });
+      });
+
+      var nieuwForm = document.getElementById('psp-student-nieuw-form');
+      if (nieuwForm) nieuwForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var naam  = document.getElementById('psp-student-nieuw-naam').value.trim();
+        var email = document.getElementById('psp-student-nieuw-email').value.trim();
+        if (!email) { toast('E-mailadres is verplicht.', 'error'); return; }
+
+        var btn = document.getElementById('psp-student-nieuw-opslaan-btn');
+        btn.disabled = true; btn.textContent = '…';
+        ajax('psp_maak_student_account', { email: email, naam: naam }, function (res) {
+          document.getElementById('psp-modal-nieuwe-student').style.display = 'none';
+          document.getElementById('psp-acc-login').textContent  = res.login;
+          document.getElementById('psp-acc-email').textContent  = res.email;
+          document.getElementById('psp-acc-ww').textContent     = res.wachtwoord;
+          var urlEl = document.getElementById('psp-acc-url');
+          urlEl.href = res.login_url; urlEl.textContent = res.login_url;
+          document.getElementById('psp-modal-account').style.display = 'flex';
+          btn.disabled = false; btn.textContent = 'Account aanmaken';
+          laadStudentenTab();
+        }, function (msg) {
+          toast(msg || 'Account aanmaken mislukt.', 'error');
+          btn.disabled = false; btn.textContent = 'Account aanmaken';
+        });
+      });
+    }
 
     ajax('psp_get_studenten', {}, function (data) {
       _studentenGeladen = true;
