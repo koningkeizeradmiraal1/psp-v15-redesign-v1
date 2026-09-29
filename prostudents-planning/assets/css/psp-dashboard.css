@@ -574,91 +574,81 @@ body.psp-fullpage { overflow: hidden; }
 .psp-koppel-btn-primary { background: var(--psp-green) !important; font-size: .8rem !important; padding: 6px 14px !important; }
 
 /* ══ Inplannen-view ══ */
-.psp-inplannen-wrap {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  flex: 1; overflow: hidden; min-height: 0;
+/* ── Inplannen: toolbar ── */
+.psp-inplannen-toolbar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 10px 16px; border-bottom: 1px solid var(--psp-border);
+  background: #fff; flex-shrink: 0;
 }
-.psp-inplannen-studenten {
-  border-right: 1px solid var(--psp-border);
-  display: flex; flex-direction: column; overflow: hidden; background: #fff;
-}
-.psp-inplannen-diensten {
-  display: flex; flex-direction: column; overflow: hidden; background: #f4f4f6;
-}
+.psp-inplannen-legenda { display: flex; gap: 14px; font-size: .72rem; color: #666; align-items: center; flex-wrap: wrap; }
+.psp-ip-legenda-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+.psp-ip-legenda-dot.beschikbaar { background: var(--psp-pink-mlt); border: 1px solid #f0a0cc; }
+.psp-ip-legenda-dot.ingepland   { background: var(--psp-green-lt); border: 1px solid var(--psp-green); }
+.psp-ip-legenda-dot.niet        { background: #f5f5f5; border: 1px solid var(--psp-border); }
 .psp-inplannen-col-header {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-bottom: 1px solid var(--psp-border);
+  padding: 8px 14px; border-bottom: 1px solid var(--psp-border);
   background: #fff; flex-shrink: 0;
-  font-size: .82rem; font-weight: 700; color: var(--psp-gray);
+  font-size: .78rem; font-weight: 700; color: var(--psp-gray);
 }
 .psp-inplannen-count {
   background: var(--psp-pink); color: #fff;
   font-size: .65rem; font-weight: 700;
   padding: 1px 7px; border-radius: 10px;
 }
-.psp-inplannen-lijst { flex: 1; overflow-y: auto; padding: 10px; min-height: 0; }
 .psp-btn-sm { padding: 4px 10px !important; font-size: .75rem !important; }
 
-/* ── Student-kaart (inplannen) ── */
-.psp-ip-student-card {
-  border: 1px solid var(--psp-border); border-radius: 9px;
-  padding: 10px 12px; margin-bottom: 7px; cursor: pointer;
-  transition: all .15s; background: #fff;
+/* ── Inplannen: weekgrid ── */
+.psp-inplannen-grid-wrap { flex: 1; overflow: auto; padding: 14px 16px; min-height: 0; background: #f4f4f6; }
+.psp-ip-grid {
+  border-collapse: separate; border-spacing: 0; width: 100%;
+  background: #fff; border-radius: var(--psp-radius); overflow: hidden;
+  box-shadow: var(--psp-shadow); font-size: .8rem;
 }
-.psp-ip-student-card:hover { border-color: var(--psp-pink); box-shadow: 0 2px 8px rgba(211,23,117,.08); }
-.psp-ip-student-card.selected {
-  border-color: var(--psp-pink); background: var(--psp-pink-lt);
-  box-shadow: 0 0 0 2px rgba(211,23,117,.18);
+.psp-ip-grid th {
+  background: var(--psp-gray-lt); font-size: .7rem; font-weight: 700; color: var(--psp-gray);
+  text-align: center; padding: 8px 6px; border-bottom: 1px solid var(--psp-border); white-space: nowrap;
 }
-.psp-ip-student-card.ingepland { border-color: var(--psp-green); background: var(--psp-green-lt); }
-.psp-ip-student-card.conflict { opacity: .45; pointer-events: none; }
-.psp-ip-student-naam { font-weight: 700; font-size: .84rem; margin-bottom: 2px; }
-.psp-ip-student-meta { font-size: .68rem; color: #aaa; margin-bottom: 5px; }
-.psp-ip-dagen { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
-.psp-ip-dag {
-  font-size: .65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;
-  text-transform: uppercase;
+.psp-ip-grid td { border-bottom: 1px solid var(--psp-border); border-right: 1px solid var(--psp-border); padding: 0; vertical-align: middle; }
+.psp-ip-grid tr:last-child td { border-bottom: none; }
+.psp-ip-grid th:last-child, .psp-ip-grid td:last-child { border-right: none; }
+.psp-ip-grid-namecol {
+  position: sticky; left: 0; z-index: 1; background: #fff;
+  text-align: left !important; padding: 8px 12px !important;
+  min-width: 170px; max-width: 220px; font-size: .78rem;
 }
-.psp-ip-dag.niet        { background: #f5f5f5; color: #ccc; }
-.psp-ip-dag.beschikbaar { background: var(--psp-pink-lt); color: var(--psp-pink); }
-.psp-ip-dag.heeft-open  { background: var(--psp-pink-lt); color: var(--psp-pink-dark); border: 1px solid #f0a0cc; }
-.psp-ip-dag.geselecteerd{ background: var(--psp-pink); color: #fff; }
+th.psp-ip-grid-namecol { z-index: 2; }
+.psp-ip-cell { min-width: 96px; height: 54px; text-align: center; font-size: .7rem; }
+.psp-ip-cell.niet {
+  color: #ddd;
+  background: repeating-linear-gradient(135deg, #fafafa, #fafafa 6px, #f2f2f2 6px, #f2f2f2 12px);
+}
+.psp-ip-cell.beschikbaar { background: var(--psp-pink-mlt); color: var(--psp-pink-dark); padding: 6px 4px; }
+.psp-ip-cell.beschikbaar.klikbaar { cursor: pointer; }
+.psp-ip-cell.beschikbaar.klikbaar:hover { background: var(--psp-pink-lt); }
+.psp-ip-beschik-tijd { font-weight: 600; }
+.psp-ip-plus { font-size: .62rem; font-weight: 700; margin-top: 2px; color: var(--psp-pink); }
+.psp-ip-cell.ingepland { background: var(--psp-green-lt); padding: 6px 4px; }
+.psp-ip-chip { font-size: .68rem; color: #1a6b3a; position: relative; padding: 0 12px 0 2px; }
+.psp-ip-chip strong { display: block; font-size: .72rem; }
+.psp-ip-chip-x {
+  position: absolute; top: -6px; right: -6px;
+  background: none; border: none; color: #7fa88f; cursor: pointer;
+  font-size: .75rem; line-height: 1; padding: 2px;
+}
+.psp-ip-chip-x:hover { color: #c0392b; }
 
-/* ── Dienst-kaart (inplannen) ── */
-.psp-ip-daggroep { margin-bottom: 12px; }
-.psp-ip-dagheader {
-  font-size: .7rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: #bbb; padding: 6px 4px 4px;
-  border-bottom: 1px solid var(--psp-border); margin-bottom: 6px;
+/* ── Inplannen: volledig open sectie ── */
+.psp-inplannen-open-sectie {
+  border-top: 1px solid var(--psp-border); background: #fff; flex-shrink: 0;
+  max-height: 180px; display: flex; flex-direction: column;
 }
-.psp-ip-dienst-card {
-  border: 1px solid var(--psp-border); border-radius: 9px;
-  padding: 10px 12px; margin-bottom: 6px; cursor: pointer;
-  transition: all .15s; position: relative; background: #fff;
+.psp-inplannen-open-lijst { overflow-y: auto; padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; }
+.psp-ip-open-card {
+  border: 1px solid var(--psp-border); border-left: 3px solid var(--psp-pink);
+  border-radius: 8px; padding: 6px 10px; font-size: .8rem; background: #fff;
 }
-.psp-ip-dienst-card:hover { border-color: var(--psp-pink); box-shadow: 0 2px 8px rgba(211,23,117,.06); }
-.psp-ip-dienst-card.open     { border-left: 3px solid var(--psp-pink); }
-.psp-ip-dienst-card.ingepland{ border-left: 3px solid var(--psp-green); background: var(--psp-green-lt); }
-.psp-ip-dienst-card.selected { border-color: var(--psp-pink); background: var(--psp-pink-lt); box-shadow: 0 0 0 2px rgba(211,23,117,.14); }
-.psp-ip-dienst-card.dimmed   { opacity: .4; pointer-events: none; }
-.psp-ip-dienst-title { font-weight: 700; font-size: .84rem; margin-bottom: 2px; }
-.psp-ip-dienst-meta  { font-size: .72rem; color: #aaa; margin-bottom: 4px; }
-.psp-ip-student-naam { font-size: .72rem; color: var(--psp-green); font-weight: 600; }
-.psp-ip-koppel-btn {
-  display: block; width: 100%; margin-top: 8px;
-  background: var(--psp-green); color: #fff;
-  border: none; border-radius: 6px; padding: 7px 12px;
-  font-size: .8rem; font-weight: 700; cursor: pointer; transition: background .15s; text-align: center;
-}
-.psp-ip-koppel-btn:hover { background: #1e8449; }
-.psp-ip-select-btn {
-  display: inline-block; margin-top: 6px;
-  background: none; border: 1px solid var(--psp-pink); color: var(--psp-pink);
-  border-radius: 5px; padding: 3px 9px; font-size: .72rem; font-weight: 700;
-  cursor: pointer; transition: background .15s;
-}
-.psp-ip-select-btn:hover { background: var(--psp-pink-lt); }
+.psp-ip-dienst-meta { font-size: .72rem; color: #aaa; margin-top: 2px; }
 
 /* ═══ Tariefmelding ═══ */
 .psp-btn-sm {

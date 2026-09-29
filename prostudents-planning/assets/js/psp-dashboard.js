@@ -14,8 +14,8 @@
     bar:                 'Bar',
   };
 
-  var DAG_KEYS  = ['ma','di','wo','do','vr','za'];
-  var DAG_NAMES = { ma:'Ma', di:'Di', wo:'Wo', do:'Do', vr:'Vr', za:'Za' };
+  var DAG_KEYS  = ['ma','di','wo','do','vr','za','zo'];
+  var DAG_NAMES = { ma:'Ma', di:'Di', wo:'Wo', do:'Do', vr:'Vr', za:'Za', zo:'Zo' };
   var MONTHS    = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
   var VAARDIGHEDEN_LABELS = {
     catering:'Catering', lopen_met_3_borden:'3 borden', lopen_met_plateau:'Plateau',
@@ -187,7 +187,7 @@
   }
 
   function dagKey(datum) {
-    var map = {1:'ma',2:'di',3:'wo',4:'do',5:'vr',6:'za'};
+    var map = {0:'zo',1:'ma',2:'di',3:'wo',4:'do',5:'vr',6:'za'};
     return map[new Date(datum).getDay()] || null;
   }
 
@@ -366,165 +366,109 @@
     });
   }
 
-  /* ════ Inplannen-view (studenten links, diensten rechts) ════ */
+  /* ════ Inplannen-view (weekgrid: studenten × dagen) ════ */
   function renderInplannenView(diensten, studenten) {
     if (!diensten)  diensten  = state.data.diensten;
     if (!studenten) studenten = state.data.beschikbaarheid;
 
-    var sLijst = document.getElementById('psp-inplannen-studenten-lijst');
-    var dLijst = document.getElementById('psp-inplannen-diensten-lijst');
-    var sCount = document.getElementById('psp-inplannen-student-count');
-    var dCount = document.getElementById('psp-inplannen-dienst-count');
+    var gridWrap  = document.getElementById('psp-inplannen-grid-wrap');
+    var openLijst = document.getElementById('psp-inplannen-open-lijst');
+    var summaryEl = document.getElementById('psp-inplannen-summary');
 
-    // Tel open diensten
-    var openDiensten = diensten.filter(function (d) { return !isIngepland(d); });
-    if (dCount) dCount.textContent = openDiensten.length + ' open';
+    var openCount = diensten.filter(function (d) { return !isIngepland(d); }).length;
+    if (summaryEl) summaryEl.textContent = studenten.length + ' student(en) · ' + diensten.length + ' dienst(en) · ' + openCount + ' open';
 
-    // ── RECHTS: diensten per datum ──
-    var dates = {}; DAG_KEYS.forEach(function (dk, i) { dates[dk] = addDays(state.week, i); });
+    // Datum per dag-key voor deze week
+    var dates = {}; DAG_KEYS.forEach(function (dk, i) { dates[dk] = fmt(addDays(state.week, i)); });
+
+    // Diensten per datum, voor snelle lookup
     var dpd = {};
     diensten.forEach(function (d) { if (!dpd[d.datum]) dpd[d.datum] = []; dpd[d.datum].push(d); });
 
-    var dHtml = '';
-    // Bepaal welke datums beschikbaar zijn voor geselecteerde student
-    var studentBeschDatums = {};
-    if (state.ipStudent) {
-      DAG_KEYS.forEach(function (dk, i) {
-        if (state.ipStudent.dagen[dk]) studentBeschDatums[fmt(addDays(state.week, i))] = state.ipStudent.dagen[dk];
+    if (!studenten.length) {
+      gridWrap.innerHTML = '<p class="psp-empty-msg">Geen beschikbaarheid ingediend deze week.</p>';
+    } else {
+      var sorted = studenten.slice().sort(function (a, b) { return a.naam.localeCompare(b.naam); });
+
+      var html = '<table class="psp-ip-grid"><thead><tr><th class="psp-ip-grid-namecol">Student</th>';
+      DAG_KEYS.forEach(function (dk) {
+        html += '<th>' + DAG_NAMES[dk] + '<br><small style="font-weight:400;opacity:.7">' + fmtNL(new Date(dates[dk])) + '</small></th>';
       });
-    }
+      html += '</tr></thead><tbody>';
 
-    DAG_KEYS.forEach(function (dk, i) {
-      var datum = fmt(addDays(state.week, i));
-      var dagsD = dpd[datum];
-      if (!dagsD || !dagsD.length) return;
-      dagsD.sort(function (a, b) { return (isIngepland(a) ? 1 : 0) - (isIngepland(b) ? 1 : 0); });
-      dHtml += '<div class="psp-ip-daggroep">';
-      dHtml += '<div class="psp-ip-dagheader">' + DAG_NAMES[dk] + ' ' + fmtNL(addDays(state.week, i)) + '</div>';
-      dagsD.forEach(function (d) {
-        var sel = state.ipDienst && state.ipDienst.id === d.id;
-        var studentBeschOp = state.ipStudent && studentBeschDatums[datum];
-        var dimmed = state.ipStudent && !studentBeschDatums[datum];
-        var cls = 'psp-ip-dienst-card' + (isIngepland(d) ? ' ingepland' : ' open') + (sel ? ' selected' : '') + (dimmed ? ' dimmed' : '');
-        dHtml += '<div class="' + cls + '" data-id="' + d.id + '">';
-        dHtml += '<div class="psp-ip-dienst-title">' + esc(d.titel) + '</div>';
-        dHtml += '<div class="psp-ip-dienst-meta">' + esc(d.opdrachtgever) + ' · ' + d.tijdstip_van + '–' + d.tijdstip_tot + (d.locatie ? ' · ' + esc(d.locatie) : '') + '</div>';
-        dHtml += '<span class="psp-dienst-card-badge ' + dienstBadgeCls(d) + '">' + dienstBadgeTxt(d) + '</span>';
-        if (isIngepland(d) && d.koppeling) {
-          dHtml += ' <span class="psp-ip-student-naam">👤 ' + esc(d.koppeling.naam) + '</span>';
-        }
-        // Als zowel student als dienst geselecteerd zijn en student beschikbaar is op deze dag → inplannen-knop
-        if (!isIngepland(d) && state.ipStudent && studentBeschOp) {
-          dHtml += '<button class="psp-ip-koppel-btn" data-dienst-id="' + d.id + '" data-student-id="' + state.ipStudent.id + '">' +
-            '✓ Nu inplannen: ' + esc(state.ipStudent.naam) + '</button>';
-        } else if (!isIngepland(d)) {
-          dHtml += '<button class="psp-ip-select-btn" data-id="' + d.id + '">Kies student →</button>';
-        }
-        dHtml += '</div>';
-      });
-      dHtml += '</div>';
-    });
-    if (!dHtml) dHtml = '<p class="psp-empty-msg">Geen diensten deze week.</p>';
-    dLijst.innerHTML = dHtml;
+      sorted.forEach(function (s) {
+        html += '<tr><td class="psp-ip-grid-namecol"><strong>' + esc(s.naam) + '</strong>';
+        if (s.vaardigheden && s.vaardigheden.length) html += renderVaardigheden(s.vaardigheden);
+        html += '</td>';
+        DAG_KEYS.forEach(function (dk) {
+          var datum = dates[dk];
+          var dag = s.dagen[dk];
+          if (!dag) { html += '<td class="psp-ip-cell niet">–</td>'; return; }
 
-    // ── LINKS: studenten ──
-    // Filteren op beschikbaarheid als er een dienst is geselecteerd
-    var gefilterdeStudenten = studenten;
-    if (state.ipDienst) {
-      var dDk = dagKey(state.ipDienst.datum);
-      gefilterdeStudenten = studenten.filter(function (s) { return !!s.dagen[dDk]; });
-    }
-    if (sCount) sCount.textContent = gefilterdeStudenten.length + ' student(en)';
+          // Is de student op deze datum al ingepland?
+          var kopDienstId = null;
+          Object.keys(s.koppelingen).forEach(function (did) {
+            var d = diensten.find(function (x) { return x.id === parseInt(did); });
+            if (d && d.datum === datum) kopDienstId = parseInt(did);
+          });
 
-    // Controleer wie al ingepland is op geselecteerde dienst
-    var ingeplandSid = state.ipDienst && state.ipDienst.koppeling ? state.ipDienst.koppeling.beschikbaarheid_id : null;
-
-    var sHtml = '';
-    gefilterdeStudenten.forEach(function (s) {
-      var sel = state.ipStudent && state.ipStudent.id === s.id;
-      var isIp = ingeplandSid === s.id;
-      // Controleer conflicten: student al ingepland op andere dienst dezelfde dag als ipDienst
-      var conflict = false;
-      if (state.ipDienst && !isIp) {
-        Object.keys(s.koppelingen).forEach(function (did) {
-          var d = state.data.diensten.find(function (x) { return x.id === parseInt(did); });
-          if (d && d.datum === state.ipDienst.datum) conflict = true;
+          if (kopDienstId) {
+            var d = diensten.find(function (x) { return x.id === kopDienstId; });
+            html += '<td class="psp-ip-cell ingepland">' +
+              '<div class="psp-ip-chip"><strong>' + esc(d.opdrachtgever) + '</strong><br>' + d.tijdstip_van + '–' + d.tijdstip_tot +
+              '<button class="psp-ip-chip-x" data-dienst-id="' + kopDienstId + '" title="Koppeling verwijderen">✕</button></div></td>';
+          } else {
+            var openHier = (dpd[datum] || []).filter(function (x) { return !isIngepland(x); }).length;
+            if (openHier > 0) {
+              html += '<td class="psp-ip-cell beschikbaar klikbaar" data-student-id="' + s.id + '" data-datum="' + datum + '">' +
+                '<div class="psp-ip-beschik-tijd">' + dag.van + '–' + dag.tot + '</div>' +
+                '<div class="psp-ip-plus">+ ' + openHier + ' open</div></td>';
+            } else {
+              html += '<td class="psp-ip-cell beschikbaar"><div class="psp-ip-beschik-tijd">' + dag.van + '–' + dag.tot + '</div></td>';
+            }
+          }
         });
-      }
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      gridWrap.innerHTML = html;
 
-      var cls = 'psp-ip-student-card' + (sel ? ' selected' : '') + (isIp ? ' ingepland' : '') + (conflict ? ' conflict' : '');
-      sHtml += '<div class="' + cls + '" data-id="' + s.id + '">';
-      sHtml += '<div class="psp-ip-student-naam">' + esc(s.naam);
-      if (isIp) sHtml += ' <span class="psp-badge-ingepland psp-dienst-card-badge">Ingepland</span>';
-      if (conflict) sHtml += ' <span style="font-size:.65rem;color:#c0392b">⚠ Bezet</span>';
-      sHtml += '</div>';
-      sHtml += '<div class="psp-ip-student-meta">' + esc(s.email) + (s.telefoon ? ' · ' + esc(s.telefoon) : '') + '</div>';
-      // Beschikbaarheidsdagen
-      sHtml += '<div class="psp-ip-dagen">';
-      DAG_KEYS.forEach(function (dk, i) {
-        var dag = s.dagen[dk];
-        var datum = fmt(addDays(state.week, i));
-        var heeftOpenDienst = (dpd[datum] || []).some(function (d) { return !isIngepland(d); });
-        var isGeselecteerdeDag = state.ipDienst && state.ipDienst.datum === datum;
-        var dagCls = 'psp-ip-dag' + (dag ? (heeftOpenDienst ? ' heeft-open' : ' beschikbaar') : ' niet') + (isGeselecteerdeDag && dag ? ' geselecteerd' : '');
-        sHtml += '<span class="' + dagCls + '" title="' + (dag ? dag.van + '–' + dag.tot : 'niet beschikbaar') + '">' + DAG_NAMES[dk] + '</span>';
+      // Klikbare cel (beschikbaar + er is minstens 1 open dienst die dag) → koppelmodal
+      gridWrap.querySelectorAll('.psp-ip-cell.klikbaar').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+          var sid = parseInt(cell.dataset.studentId);
+          var s = studenten.find(function (x) { return x.id === sid; });
+          if (s) openKoppelModal(s, cell.dataset.datum, diensten);
+        });
       });
-      sHtml += '</div>';
-      if (s.vaardigheden && s.vaardigheden.length) sHtml += renderVaardigheden(s.vaardigheden);
-      sHtml += '</div>';
-    });
-    if (!sHtml) sHtml = '<p class="psp-empty-msg">' + (state.ipDienst ? 'Geen studenten beschikbaar op ' + fmtNL(new Date(state.ipDienst.datum)) + '.' : 'Geen beschikbaarheid ingediend.') + '</p>';
-    sLijst.innerHTML = sHtml;
+      // Ontkoppel-knop op een ingeplande cel
+      gridWrap.querySelectorAll('.psp-ip-chip-x').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (!confirm('Koppeling verwijderen?')) return;
+          ajax('psp_ontkoppel', { dienst_id: btn.dataset.dienstId }, function () {
+            toast('Koppeling verwijderd.', 'success'); loadWeek();
+          }, function (msg) { toast(msg || 'Mislukt.', 'error'); });
+        });
+      });
+    }
 
-    // ── Events: dienst selecteren ──
-    dLijst.querySelectorAll('.psp-ip-dienst-card').forEach(function (card) {
-      card.addEventListener('click', function (e) {
-        if (e.target.closest('.psp-ip-koppel-btn') || e.target.closest('.psp-ip-select-btn')) return;
-        var id = parseInt(card.dataset.id);
-        var d  = state.data.diensten.find(function (x) { return x.id === id; });
-        state.ipDienst = (state.ipDienst && state.ipDienst.id === id) ? null : d;
-        renderInplannenView(diensten, studenten);
-      });
+    // Diensten waarvoor helemaal niemand beschikbaar is (los van al ingepland of niet)
+    var volledigOpen = diensten.filter(function (d) {
+      if (isIngepland(d)) return false;
+      var dk = dagKey(d.datum);
+      return !studenten.some(function (s) { return !!s.dagen[dk]; });
     });
-    // ── Events: student selecteren ──
-    sLijst.querySelectorAll('.psp-ip-student-card').forEach(function (card) {
-      card.addEventListener('click', function () {
-        var id = parseInt(card.dataset.id);
-        var s  = state.data.beschikbaarheid.find(function (x) { return x.id === id; });
-        state.ipStudent = (state.ipStudent && state.ipStudent.id === id) ? null : s;
-        renderInplannenView(diensten, studenten);
-      });
-    });
-    // ── Events: direct inplannen ──
-    dLijst.querySelectorAll('.psp-ip-koppel-btn').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        btn.disabled = true; btn.textContent = '…';
-        ajax('psp_koppel', { beschikbaarheid_id: btn.dataset.studentId, dienst_id: btn.dataset.dienstId }, function (res) {
-          toast(res.message, 'success');
-          var _did = btn.dataset.dienstId;
-          state.ipDienst = null; state.ipStudent = null;
-          loadWeek();
-          if (res.eerste_keer) toonTariefModal(res.student_email, res.opdrachtgever, res.student_naam);
-          // WB popup tonen na inplannen (alleen preview, niets wordt verstuurd)
-          setTimeout(function () {
-            toonWbStuurModal({ dienst_id: _did, student_email: res.email, student_naam: res.naam, opdrachtgever: res.opdrachtgever });
-          }, res.eerste_keer ? 800 : 400);
-        }, function (msg) { toast(msg || 'Inplannen mislukt.', 'error'); btn.disabled = false; });
-      });
-    });
-    // ── Events: "Kies student" knop op dienst-kaart ──
-    dLijst.querySelectorAll('.psp-ip-select-btn').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var id = parseInt(btn.dataset.id);
-        state.ipDienst = state.data.diensten.find(function (x) { return x.id === id; });
-        renderInplannenView(diensten, studenten);
-        // Scroll linker panel naar boven
-        var sL = document.getElementById('psp-inplannen-studenten-lijst');
-        if (sL) sL.scrollTop = 0;
-      });
-    });
+    if (!openLijst) return;
+    if (!volledigOpen.length) {
+      openLijst.innerHTML = '<p class="psp-empty-msg">Geen — voor elke openstaande dienst is er minstens één beschikbare student.</p>';
+    } else {
+      volledigOpen.sort(function (a, b) { return a.datum.localeCompare(b.datum); });
+      openLijst.innerHTML = volledigOpen.map(function (d) {
+        return '<div class="psp-ip-open-card"><strong>' + esc(d.titel) + '</strong> — ' + esc(d.opdrachtgever) +
+          '<div class="psp-ip-dienst-meta">' + fmtNL(new Date(d.datum)) + ' · ' + d.tijdstip_van + '–' + d.tijdstip_tot + (d.locatie ? ' · ' + esc(d.locatie) : '') + '</div></div>';
+      }).join('');
+    }
   }
 
   /* ════ Vervanger modal ════ */

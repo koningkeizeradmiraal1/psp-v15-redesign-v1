@@ -215,28 +215,21 @@ class PSP_Dashboard {
 
   <!-- TAB: Inplannen (studenten links, diensten rechts) -->
   <div id="psp-tab-inplannen" class="psp-tab-panel" style="display:none">
-    <div class="psp-inplannen-wrap">
-      <!-- Linker kolom: studenten -->
-      <div class="psp-inplannen-studenten">
-        <div class="psp-inplannen-col-header">
-          <span>Studenten</span>
-          <span id="psp-inplannen-student-count" class="psp-inplannen-count"></span>
-        </div>
-        <div id="psp-inplannen-studenten-lijst" class="psp-inplannen-lijst">
-          <p class="psp-empty-msg">Laden…</p>
-        </div>
+    <div class="psp-inplannen-toolbar">
+      <div class="psp-inplannen-legenda">
+        <span><span class="psp-ip-legenda-dot beschikbaar"></span> Beschikbaar</span>
+        <span><span class="psp-ip-legenda-dot ingepland"></span> Ingepland</span>
+        <span><span class="psp-ip-legenda-dot niet"></span> Niet beschikbaar</span>
       </div>
-      <!-- Rechter kolom: diensten -->
-      <div class="psp-inplannen-diensten">
-        <div class="psp-inplannen-col-header">
-          <span>Diensten deze week</span>
-          <span id="psp-inplannen-dienst-count" class="psp-inplannen-count"></span>
-          <button class="psp-btn-primary psp-btn-sm" id="psp-nieuw-dienst-btn3" style="margin-left:auto">+ Nieuw</button>
-        </div>
-        <div id="psp-inplannen-diensten-lijst" class="psp-inplannen-lijst">
-          <p class="psp-empty-msg">Laden…</p>
-        </div>
-      </div>
+      <span id="psp-inplannen-summary" class="psp-inplannen-count"></span>
+      <button class="psp-btn-primary psp-btn-sm" id="psp-nieuw-dienst-btn3" style="margin-left:auto">+ Nieuwe dienst</button>
+    </div>
+    <div id="psp-inplannen-grid-wrap" class="psp-inplannen-grid-wrap">
+      <p class="psp-empty-msg">Laden…</p>
+    </div>
+    <div class="psp-inplannen-open-sectie">
+      <div class="psp-inplannen-col-header"><span>Nog volledig open (niemand beschikbaar of ingepland)</span></div>
+      <div id="psp-inplannen-open-lijst" class="psp-inplannen-open-lijst"></div>
     </div>
   </div>
 
