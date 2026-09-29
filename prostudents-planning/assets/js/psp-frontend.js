@@ -54,6 +54,9 @@
         .then(function (data) {
           if (data.success) {
             form.style.display      = 'none';
+            if (data.data && data.data.message) {
+              succesDiv.innerHTML = '<strong>&#10003; Verwerkt!</strong> ' + data.data.message;
+            }
             succesDiv.style.display = 'block';
             window.scrollTo({ top: succesDiv.getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
           } else {

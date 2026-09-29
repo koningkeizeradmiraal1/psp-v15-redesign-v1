@@ -393,6 +393,34 @@ class PSP_Frontend {
             wp_send_json_error(['message' => 'Vink minimaal één beschikbare dag aan.']);
         }
 
+        /* ── Wijzigingen op dagen die al ingepland zijn, of binnen 24 uur vallen, worden genegeerd ── */
+        $bestaand   = PSP_DB::get_beschikbaarheid_by_email_week( $email, $week );
+        $oude_dagen = $bestaand ? ( json_decode( $bestaand->dagen, true ) ?: [] ) : [];
+
+        $dag_offset = ['ma'=>0,'di'=>1,'wo'=>2,'do'=>3,'vr'=>4,'za'=>5,'zo'=>6];
+        $nu         = current_time('timestamp');
+        $geblokkeerd = [];
+        $finale_dagen = [];
+
+        foreach ($dag_keys as $dag) {
+            $datum_dag   = date('Y-m-d', strtotime($week . ' +' . $dag_offset[$dag] . ' days'));
+            $binnen_24u  = ( strtotime($datum_dag) - $nu ) < DAY_IN_SECONDS;
+            $is_ingepland = PSP_DB::is_student_ingepland_op_datum( $email, $datum_dag );
+            $locked = $binnen_24u || $is_ingepland;
+
+            if ($locked) {
+                // Niet meer aanpasbaar: behoud de eerder opgeslagen waarde voor deze dag (indien aanwezig)
+                if ( isset($oude_dagen[$dag]) ) $finale_dagen[$dag] = $oude_dagen[$dag];
+                if ( isset($dagen[$dag]) )      $geblokkeerd[] = $dag;
+            } elseif ( isset($dagen[$dag]) ) {
+                $finale_dagen[$dag] = $dagen[$dag];
+            }
+        }
+
+        if ( empty($finale_dagen) ) {
+            wp_send_json_error(['message' => 'Deze dag(en) zijn al ingepland of vallen binnen 24 uur en kunnen niet meer worden aangepast.']);
+        }
+
         $toegestaan   = array_keys(self::vaardigheden_lijst());
         $vaardigheden = [];
         // Student kan geen vaardigheden instellen — haal ze op uit zijn gebruikersprofiel
@@ -411,15 +439,22 @@ class PSP_Frontend {
             }
         }
 
-        $id = PSP_DB::insert_beschikbaarheid([
+        $payload = [
             'naam'       => $naam,
             'email'      => $email,
             'telefoon'   => sanitize_text_field($_POST['telefoon'] ?? ''),
             'week_start' => $week,
-            'dagen'      => $dagen,
+            'dagen'      => $finale_dagen,
             'vaardigheden' => $vaardigheden,
             'voorkeur'   => sanitize_textarea_field($_POST['voorkeur'] ?? ''),
-        ]);
+        ];
+
+        if ( $bestaand ) {
+            $ok = PSP_DB::update_beschikbaarheid( $bestaand->id, $payload );
+            $id = $ok !== false ? $bestaand->id : false;
+        } else {
+            $id = PSP_DB::insert_beschikbaarheid( $payload );
+        }
 
         if (!$id) {
             wp_send_json_error(['message' => 'Er ging iets mis. Probeer het opnieuw.']);
@@ -429,6 +464,13 @@ class PSP_Frontend {
         $record = PSP_DB::get_beschikbaarheid_by_id($id);
         if ($record) PSP_Mail::stuur_bevestiging_aan_student($record);
 
-        wp_send_json_success(['message' => 'Beschikbaarheid ontvangen!']);
+        $bericht = 'Beschikbaarheid ontvangen!';
+        if ( ! empty($geblokkeerd) ) {
+            $dag_labels = ['ma'=>'maandag','di'=>'dinsdag','wo'=>'woensdag','do'=>'donderdag','vr'=>'vrijdag','za'=>'zaterdag','zo'=>'zondag'];
+            $namen = array_map(function($d) use ($dag_labels) { return $dag_labels[$d]; }, $geblokkeerd);
+            $bericht .= ' Let op: ' . implode(', ', $namen) . ' kon niet worden aangepast (al ingepland of binnen 24 uur) en is ongewijzigd gelaten.';
+        }
+
+        wp_send_json_success(['message' => $bericht]);
     }
 }

@@ -299,6 +299,33 @@ class PSP_DB {
         $wpdb->delete( PSP_TABLE_BESCHIKBAARHEID, array( 'id'                => $id ) );
     }
 
+    /**
+     * Zoekt een bestaande beschikbaarheid-inzending van deze student voor deze week
+     * (voor edit-in-plaats-van-dupliceren).
+     */
+    public static function get_beschikbaarheid_by_email_week( $email, $week_start ) {
+        global $wpdb;
+        return $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM " . PSP_TABLE_BESCHIKBAARHEID . " WHERE email = %s AND week_start = %s ORDER BY id DESC LIMIT 1",
+            $email, $week_start
+        ) );
+    }
+
+    /**
+     * Is deze student (op e-mail) al ingepland op een dienst op deze datum?
+     */
+    public static function is_student_ingepland_op_datum( $email, $datum ) {
+        global $wpdb;
+        $aantal = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM " . PSP_TABLE_KOPPELINGEN . " k
+             JOIN " . PSP_TABLE_DIENSTEN . " d      ON d.id = k.dienst_id
+             JOIN " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
+             WHERE b.email = %s AND d.datum = %s",
+            $email, $datum
+        ) );
+        return ( (int) $aantal ) > 0;
+    }
+
     public static function update_beschikbaarheid( $id, $data ) {
         global $wpdb;
         return $wpdb->update(
