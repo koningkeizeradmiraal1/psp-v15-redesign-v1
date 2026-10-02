@@ -1063,7 +1063,11 @@ class PSP_Dashboard {
     public static function ajax_wb_laad() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        wp_send_json_success( PSP_DB::get_wb_templates() );
+        $og = sanitize_text_field( $_POST['og'] ?? '' );
+        wp_send_json_success( array(
+            'rows' => PSP_DB::get_wb_templates( $og ),
+            'ogs'  => PSP_DB::get_wb_ogs(),
+        ) );
     }
 
     /* ─────────────── AJAX: WB template opslaan ─────────────── */

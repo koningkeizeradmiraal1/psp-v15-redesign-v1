@@ -96,13 +96,35 @@ class PSP_Frontend {
             $wk->modify('+7 days');
         }
 
-        $dagen = ['ma'=>'Maandag','di'=>'Dinsdag','wo'=>'Woensdag','do'=>'Donderdag','vr'=>'Vrijdag','za'=>'Zaterdag'];
+        $dagen = ['ma'=>'Maandag','di'=>'Dinsdag','wo'=>'Woensdag','do'=>'Donderdag','vr'=>'Vrijdag','za'=>'Zaterdag','zo'=>'Zondag'];
         ?>
         <?php
         $is_student = is_user_logged_in() && current_user_can('psp_student');
         $wp_user    = $is_student ? wp_get_current_user() : null;
         $prefil_naam  = $wp_user ? $wp_user->display_name : '';
         $prefil_email = $wp_user ? $wp_user->user_email   : '';
+
+        /* ── Voor ingelogde studenten: bereken per week welke dagen al vastliggen ──
+           (al ingepland, of binnen 24 uur) zodat het formulier ze grijs/disabled kan tonen. */
+        $dag_offset  = ['ma'=>0,'di'=>1,'wo'=>2,'do'=>3,'vr'=>4,'za'=>5,'zo'=>6];
+        $locked_data = [];
+        if ( $is_student && $prefil_email ) {
+            $nu = current_time('timestamp');
+            foreach ( array_keys($weeks) as $week_start ) {
+                $bestaand   = PSP_DB::get_beschikbaarheid_by_email_week( $prefil_email, $week_start );
+                $oude_dagen = $bestaand ? ( json_decode( $bestaand->dagen, true ) ?: [] ) : [];
+                $week_locked = [];
+                foreach ( $dag_offset as $dag => $offset ) {
+                    $datum_dag    = date('Y-m-d', strtotime($week_start . ' +' . $offset . ' days'));
+                    $binnen_24u   = ( strtotime($datum_dag) - $nu ) < DAY_IN_SECONDS;
+                    $is_ingepland = PSP_DB::is_student_ingepland_op_datum( $prefil_email, $datum_dag );
+                    if ( $binnen_24u || $is_ingepland ) {
+                        $week_locked[$dag] = isset($oude_dagen[$dag]) ? $oude_dagen[$dag] : null;
+                    }
+                }
+                if ( $week_locked ) $locked_data[$week_start] = $week_locked;
+            }
+        }
         ?>
         <div class="psp-form-wrap" id="psp-beschikbaarheid">
             <h2 class="psp-form-title">Beschikbaarheid opgeven</h2>
@@ -151,7 +173,7 @@ class PSP_Frontend {
                     <p class="psp-field-hint">Vink de dagen aan waarop je beschikbaar bent en vul de tijden in.</p>
                     <div class="psp-dagen">
                         <div class="psp-dag-header">
-                            <span></span><span>Van</span><span>Tot</span>
+                            <span></span><span>Van</span><span>Tot</span><span></span>
                         </div>
                         <?php foreach ($dagen as $key => $label): ?>
                         <div class="psp-dag-row" data-dag="<?php echo esc_attr($key); ?>">
@@ -161,6 +183,7 @@ class PSP_Frontend {
                             </label>
                             <input type="time" name="dag_<?php echo esc_attr($key); ?>_van" class="psp-time" value="09:00" disabled>
                             <input type="time" name="dag_<?php echo esc_attr($key); ?>_tot" class="psp-time" value="17:00" disabled>
+                            <span class="psp-dag-lock" style="display:none" title="Al ingepland of binnen 24 uur — kan niet meer worden aangepast">🔒</span>
                         </div>
                         <?php endforeach; ?>
                     </div>
@@ -198,6 +221,9 @@ class PSP_Frontend {
                 <strong>✓ Ontvangen!</strong> Bedankt, we nemen contact op zodra we je inplannen. Je ontvangt ook een bevestiging per e-mail.
             </div>
         </div>
+        <?php if ( $locked_data ): ?>
+        <script>window.pspLockedData = <?php echo wp_json_encode( $locked_data ); ?>;</script>
+        <?php endif; ?>
         <?php
         return ob_get_clean();
     }

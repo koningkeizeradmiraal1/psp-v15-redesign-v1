@@ -73,7 +73,7 @@
 .psp-dag-header,
 .psp-dag-row {
   display: grid;
-  grid-template-columns: 1fr 120px 120px;
+  grid-template-columns: 1fr 120px 120px 22px;
   align-items: center;
   gap: 10px;
   padding: 7px 4px;
@@ -93,6 +93,18 @@
 }
 .psp-dag-row.psp-dag-actief {
   background: #fff8fc;
+}
+.psp-dag-row.psp-dag-locked {
+  background: #f3f3f3;
+  opacity: .7;
+}
+.psp-dag-row.psp-dag-locked.psp-dag-actief {
+  background: #f6f1f4;
+}
+.psp-dag-lock {
+  font-size: .9rem;
+  text-align: center;
+  cursor: help;
 }
 .psp-dag-check {
   display: flex;
@@ -172,7 +184,7 @@
 @media (max-width: 540px) {
   .psp-row { flex-direction: column; gap: 0; }
   .psp-dag-header,
-  .psp-dag-row { grid-template-columns: 1fr 90px 90px; gap: 6px; }
+  .psp-dag-row { grid-template-columns: 1fr 90px 90px 18px; gap: 6px; }
 }
 
 /* ── Vaardigheden checkboxes ── */

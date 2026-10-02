@@ -5,6 +5,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     initCheckboxes();
     initFormSubmit();
+    initLockedDays();
   });
 
   /* ── Dag-checkboxes: tijd-inputs aan/uit ── */
@@ -19,6 +20,49 @@
         row.classList.toggle('psp-dag-actief', cb.checked);
       });
     });
+  }
+
+  /* ── Dagen die al ingepland zijn of binnen 24 uur vallen: grijs/disabled tonen ── */
+  function initLockedDays() {
+    var weekSelect = document.getElementById('psp-week');
+    if (!weekSelect) return;
+
+    function applyLockedDays() {
+      var data = (window.pspLockedData && window.pspLockedData[weekSelect.value]) || {};
+      document.querySelectorAll('.psp-dag-row').forEach(function (row) {
+        var dag      = row.dataset.dag;
+        var checkbox = row.querySelector('.psp-dag-checkbox');
+        var vanInput = row.querySelector('input[name$="_van"]');
+        var totInput = row.querySelector('input[name$="_tot"]');
+        var lockIcon = row.querySelector('.psp-dag-lock');
+        var locked   = Object.prototype.hasOwnProperty.call(data, dag);
+
+        checkbox.disabled = locked;
+        if (lockIcon) lockIcon.style.display = locked ? 'inline' : 'none';
+        row.classList.toggle('psp-dag-locked', locked);
+
+        if (locked) {
+          var waarde = data[dag];
+          if (waarde) {
+            checkbox.checked = true;
+            vanInput.value   = waarde.van;
+            totInput.value   = waarde.tot;
+            row.classList.add('psp-dag-actief');
+          } else {
+            checkbox.checked = false;
+            row.classList.remove('psp-dag-actief');
+          }
+          vanInput.disabled = true;
+          totInput.disabled = true;
+        } else {
+          vanInput.disabled = !checkbox.checked;
+          totInput.disabled = !checkbox.checked;
+        }
+      });
+    }
+
+    applyLockedDays();
+    weekSelect.addEventListener('change', applyLockedDays);
   }
 
   /* ── AJAX submit ── */
