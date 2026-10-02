@@ -1529,12 +1529,27 @@
     });
   }
 
+  var WB_DEFAULT_ONDERWERP = 'Bevestiging dienst {datum}';
+  var WB_DEFAULT_INHOUD =
+    'Beste {naam},\n\n' +
+    'Hierbij bevestigen wij jouw dienst bij {opdrachtgever}:\n\n' +
+    'Datum:      {datum}\n' +
+    'Tijdstip:   {van} – {tot}\n' +
+    'Locatie:    {locatie}\n' +
+    'Type werk:  {type_werk}\n\n' +
+    'Klik op de onderstaande link om te bevestigen dat je deze werkbevestiging hebt ontvangen en gelezen:\n' +
+    '{bevestig_link}\n\n' +
+    'Met vriendelijke groet,\nProStudents';
+
   function openWbModal(r) {
+    // Bij een NIEUWE template vullen we het veld al met de standaardtekst + variabelen in
+    // (als echte inhoud, niet als grijze placeholder) — medewerkers kennen de {variabelen}
+    // niet uit zichzelf en deze tekst mag dus niet verdwijnen zodra ze gaan typen.
     document.getElementById('psp-wb-id').value          = r ? r.id : '';
     document.getElementById('psp-wb-opdrachtgever').value = r ? (r.opdrachtgever || '') : '';
     document.getElementById('psp-wb-naam').value        = r ? (r.naam || '') : '';
-    document.getElementById('psp-wb-onderwerp').value   = r ? (r.onderwerp || '') : '';
-    document.getElementById('psp-wb-inhoud').value      = r ? (r.inhoud || '') : '';
+    document.getElementById('psp-wb-onderwerp').value   = r ? (r.onderwerp || '') : WB_DEFAULT_ONDERWERP;
+    document.getElementById('psp-wb-inhoud').value      = r ? (r.inhoud || '') : WB_DEFAULT_INHOUD;
     document.getElementById('psp-modal-wb-title').textContent = r ? 'Template bewerken' : 'Nieuwe template';
     var delBtn = document.getElementById('psp-wb-delete-btn');
     if (delBtn) delBtn.style.display = r ? '' : 'none';

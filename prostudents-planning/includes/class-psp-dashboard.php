@@ -608,11 +608,12 @@ class PSP_Dashboard {
         </div>
         <div class="psp-field">
           <label>Onderwerp (e-mail)</label>
-          <input type="text" name="onderwerp" id="psp-wb-onderwerp" placeholder="bijv. Bevestiging dienst {datum}">
+          <input type="text" name="onderwerp" id="psp-wb-onderwerp" placeholder="Onderwerp van de e-mail">
         </div>
         <div class="psp-field">
           <label>Inhoud</label>
-          <textarea name="inhoud" id="psp-wb-inhoud" rows="8" style="font-family:monospace;font-size:.84rem" placeholder="Beste {naam},&#10;&#10;Hierbij bevestigen wij jouw dienst bij {opdrachtgever}:&#10;&#10;Datum:      {datum}&#10;Tijdstip:   {van} – {tot}&#10;Locatie:    {locatie}&#10;Type werk:  {type_werk}&#10;&#10;Klik op de onderstaande link om te bevestigen dat je deze werkbevestiging hebt ontvangen en gelezen:&#10;{bevestig_link}&#10;&#10;Met vriendelijke groet,&#10;ProStudents"></textarea>
+          <p class="psp-field-hint">De tekst met {variabelen} staat al klaar als voorbeeld — pas aan wat je wilt, de rest blijft gewoon staan.</p>
+          <textarea name="inhoud" id="psp-wb-inhoud" rows="8" style="font-family:monospace;font-size:.84rem"></textarea>
         </div>
       </div>
       <div class="psp-modal-footer">
