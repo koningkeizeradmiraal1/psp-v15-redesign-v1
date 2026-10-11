@@ -50,9 +50,7 @@
     initDienstModal();
     initBeschikbaarheidModal();
     initFilter();
-    initTariefModal();
     loadWeek();
-    laadTarievenBadge();
   });
 
   /* ════ Tabs ════ */
@@ -499,10 +497,9 @@
           ajax('psp_ontkoppel', { dienst_id: dienst.id }, function () {
             ajax('psp_koppel', { beschikbaarheid_id: btn.dataset.studentId, dienst_id: dienst.id }, function (res) {
               toast(res.message, 'success'); document.getElementById('psp-modal-vervanger').style.display = 'none'; loadWeek();
-              if (res.eerste_keer) toonTariefModal(res.student_email, res.opdrachtgever, res.student_naam);
               setTimeout(function () {
                 toonWbStuurModal({ dienst_id: dienst.id, student_email: res.email, student_naam: res.naam, opdrachtgever: res.opdrachtgever });
-              }, res.eerste_keer ? 800 : 400);
+              }, 400);
             }, function (msg) { toast(msg || 'Mislukt.', 'error'); btn.disabled = false; btn.textContent = 'Inplannen'; });
           });
         });
@@ -537,10 +534,9 @@
           btn.disabled = true; btn.textContent = '…';
           ajax('psp_koppel', { beschikbaarheid_id: btn.dataset.studentId, dienst_id: btn.dataset.dienstId }, function (res) {
             toast(res.message, 'success'); document.getElementById('psp-modal-koppel').style.display = 'none'; loadWeek();
-            if (res.eerste_keer) toonTariefModal(res.student_email, res.opdrachtgever, res.student_naam);
             setTimeout(function () {
               toonWbStuurModal({ dienst_id: btn.dataset.dienstId, student_email: res.email, student_naam: res.naam, opdrachtgever: res.opdrachtgever });
-            }, res.eerste_keer ? 800 : 400);
+            }, 400);
           }, function (msg) { toast(msg || 'Mislukt.', 'error'); btn.disabled = false; btn.textContent = 'Inplannen'; });
         });
       });
@@ -835,55 +831,6 @@
   function fmtNL(d) { var dt = new Date(d); return dt.getDate() + ' ' + MONTHS[dt.getMonth()]; }
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   /* ════════════════════════════════════════════════════
-     TARIEFMELDING MODAL
-  ════════════════════════════════════════════════════ */
-  var _tariefCtx = {};
-
-  function toonTariefModal(email, opdrachtgever, naam) {
-    _tariefCtx = { email: email, opdrachtgever: opdrachtgever };
-    var tekst = document.getElementById('psp-tarief-tekst');
-    if (tekst) tekst.textContent = (naam || email) + ' werkt voor het eerst bij ' + opdrachtgever + '.';
-    var modal = document.getElementById('psp-modal-tarief');
-    if (modal) modal.style.display = 'flex';
-    // Wis vorige invoer
-    var u = document.getElementById('psp-tarief-uurtarief');
-    var l = document.getElementById('psp-tarief-loon');
-    if (u) u.value = ''; if (l) l.value = '';
-  }
-
-  function initTariefModal() {
-    var saveBtn = document.getElementById('psp-tarief-save-btn');
-    var skipBtn = document.getElementById('psp-tarief-skip-btn');
-    if (!saveBtn) return;
-
-    saveBtn.addEventListener('click', function () {
-      var uurtarief = parseFloat(document.getElementById('psp-tarief-uurtarief').value) || 0;
-      var loon      = parseFloat(document.getElementById('psp-tarief-loon').value) || 0;
-      saveBtn.disabled = true;
-      ajax('psp_save_tarief', {
-        student_email:  _tariefCtx.email,
-        opdrachtgever:  _tariefCtx.opdrachtgever,
-        uurtarief:      uurtarief,
-        loon:           loon
-      }, function (res) {
-        toast(res.message || '\u2713 Doorgegeven aan flexexpert.', 'success');
-        document.getElementById('psp-modal-tarief').style.display = 'none';
-        saveBtn.disabled = false;
-        laadTarievenBadge();
-      }, function (msg) {
-        toast(msg || 'Opslaan mislukt.', 'error');
-        saveBtn.disabled = false;
-      });
-    });
-
-    skipBtn.addEventListener('click', function () {
-      document.getElementById('psp-modal-tarief').style.display = 'none';
-      toast('Tarief wordt later ingevuld. Zie Beheer-tab.', 'info');
-      laadTarievenBadge();
-    });
-  }
-
-  /* ════════════════════════════════════════════════════
      BEHEER TAB
   ════════════════════════════════════════════════════ */
   var _beheerInit = false;
@@ -900,7 +847,6 @@
         document.querySelectorAll('.psp-stab-panel').forEach(function (p) { p.style.display = 'none'; });
         var panel = document.getElementById('psp-stab-' + btn.dataset.stab);
         if (panel) panel.style.display = '';
-        if (btn.dataset.stab === 'tarieven')       laadTarievenTodo();
         if (btn.dataset.stab === 'aanmeldingen')   laadAanmeldingen();
         if (btn.dataset.stab === 'studenten')      laadStudentenTab();
         if (btn.dataset.stab === 'werkbevestiging') initWbTab();
@@ -910,16 +856,8 @@
       });
     });
 
-    laadTarievenTodo();
+    laadAanmeldingen();
     laadAanmeldingenBadge();
-  }
-
-  function laadTarievenBadge() {
-    ajax('psp_tarieven_todo', {}, function (data) {
-      var n = Array.isArray(data) ? data.length : 0;
-      var badge = document.getElementById('psp-tarieven-badge');
-      if (badge) { badge.textContent = n; badge.style.display = n ? '' : 'none'; }
-    });
   }
 
   /* ════════════════════════════════════════════════════
@@ -1098,48 +1036,6 @@
     var saveBtn = document.getElementById('psp-og-opslaan-btn');
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Opslaan'; }
     modal.style.display = 'flex';
-  }
-
-  function laadTarievenTodo() {
-    var el = document.getElementById('psp-tarieven-todo-lijst');
-    if (!el) return;
-    el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
-
-    ajax('psp_tarieven_todo', {}, function (data) {
-      if (!Array.isArray(data) || !data.length) {
-        el.innerHTML = '<p class="psp-empty-msg">&#10003; Geen openstaande tariefmeldingen.</p>';
-        var badge = document.getElementById('psp-tarieven-badge');
-        if (badge) badge.style.display = 'none';
-        return;
-      }
-      var badge = document.getElementById('psp-tarieven-badge');
-      if (badge) { badge.textContent = data.length; badge.style.display = ''; }
-
-      var html = '<table class="psp-table"><thead><tr>'
-        + '<th>Student</th><th>Opdrachtgever</th><th>Datum koppeling</th><th>Actie</th>'
-        + '</tr></thead><tbody>';
-      data.forEach(function (r) {
-        html += '<tr>'
-          + '<td><strong>' + esc(r.student_naam) + '</strong><br><small>' + esc(r.student_email) + '</small></td>'
-          + '<td>' + esc(r.opdrachtgever) + '</td>'
-          + '<td>' + esc(r.datum) + '</td>'
-          + '<td><button class="psp-btn-primary psp-btn-sm psp-tarief-invul-btn"'
-          + ' data-email="' + esc(r.student_email) + '"'
-          + ' data-opdrachtgever="' + esc(r.opdrachtgever) + '"'
-          + ' data-naam="' + esc(r.student_naam) + '">Invullen</button></td>'
-          + '</tr>';
-      });
-      html += '</tbody></table>';
-      el.innerHTML = html;
-
-      el.querySelectorAll('.psp-tarief-invul-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          toonTariefModal(btn.dataset.email, btn.dataset.opdrachtgever, btn.dataset.naam);
-        });
-      });
-    }, function () {
-      el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
-    });
   }
 
 

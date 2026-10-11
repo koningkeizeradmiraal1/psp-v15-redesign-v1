@@ -15,8 +15,6 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_get_aanmeldingen',              [self::class, 'ajax_get_aanmeldingen']);
         add_action('wp_ajax_psp_goedkeur_aanmelding',           [self::class, 'ajax_goedkeur_aanmelding']);
         add_action('wp_ajax_psp_wijs_af_aanmelding',            [self::class, 'ajax_wijs_af_aanmelding']);
-        add_action('wp_ajax_psp_save_tarief',            [self::class, 'ajax_save_tarief']);
-        add_action('wp_ajax_psp_tarieven_todo',          [self::class, 'ajax_tarieven_todo']);
         add_action('wp_ajax_psp_get_studenten',          [self::class, 'ajax_get_studenten']);
         add_action('wp_ajax_psp_maak_student_account',   [self::class, 'ajax_maak_student_account']);
         add_action('wp_ajax_psp_save_student_vaardigheden', [self::class, 'ajax_save_student_vaardigheden']);
@@ -76,7 +74,7 @@ class PSP_Dashboard {
       <button class="psp-tab" data-tab="diensten">Diensten</button>
       <button class="psp-tab" data-tab="studenten">Beschikbaarheid</button>
       <button class="psp-tab" data-tab="inplannen">Inplannen</button>
-      <button class="psp-tab" data-tab="beheer">&#9881; Beheer <span id="psp-tarieven-badge" style="display:none;background:#e53935;color:#fff;border-radius:10px;font-size:.65rem;font-weight:700;padding:1px 6px;margin-left:2px;vertical-align:middle"></span></button>
+      <button class="psp-tab" data-tab="beheer">&#9881; Beheer</button>
       <button class="psp-tab" data-tab="evenementen">&#127965; Evenementen</button>
     </div>
     <div class="psp-dash-week-nav">
@@ -237,8 +235,7 @@ class PSP_Dashboard {
   <!-- TAB: Beheer -->
   <div id="psp-tab-beheer" class="psp-tab-panel" style="display:none">
     <div class="psp-beheer-subtabs">
-      <button class="psp-stab active" data-stab="tarieven">&#128466; Tarieven flexexpert</button>
-      <button class="psp-stab" data-stab="aanmeldingen">&#128221; Aanmeldingen <span id="psp-aanmeldingen-badge" style="display:none;background:#d31775;color:#fff;border-radius:10px;font-size:.65rem;font-weight:700;padding:1px 6px;margin-left:2px;vertical-align:middle"></span></button>
+      <button class="psp-stab active" data-stab="aanmeldingen">&#128221; Aanmeldingen <span id="psp-aanmeldingen-badge" style="display:none;background:#d31775;color:#fff;border-radius:10px;font-size:.65rem;font-weight:700;padding:1px 6px;margin-left:2px;vertical-align:middle"></span></button>
       <button class="psp-stab" data-stab="studenten">&#128101; Student accounts</button>
       <button class="psp-stab" data-stab="werkbevestiging">&#128196; Werkbevestiging</button>
       <button class="psp-stab" data-stab="bevestigingen">&#10003; Bevestigingen</button>
@@ -246,18 +243,8 @@ class PSP_Dashboard {
       <button class="psp-stab" data-stab="opdrachtgevers">&#127968; Opdrachtgevers</button>
     </div>
 
-    <!-- Subtab: Tarieven -->
-    <div id="psp-stab-tarieven" class="psp-stab-panel">
-      <div class="psp-panel-body">
-        <p style="color:#666;font-size:.87rem;margin:0 0 16px">
-          Eerste-keer koppelingen waarvoor het uurtarief en loon nog niet zijn doorgegeven aan flexexpert.
-        </p>
-        <div id="psp-tarieven-todo-lijst"><p class="psp-empty-msg">Laden&#8230;</p></div>
-      </div>
-    </div>
-
     <!-- Subtab: Aanmeldingen -->
-    <div id="psp-stab-aanmeldingen" class="psp-stab-panel" style="display:none">
+    <div id="psp-stab-aanmeldingen" class="psp-stab-panel">
       <div class="psp-panel-body">
         <p style="color:#666;font-size:.87rem;margin:0 0 16px">
           Nieuwe uitzendkrachten die zich hebben aangemeld via de website. Keur goed of wijs af.
@@ -425,36 +412,6 @@ class PSP_Dashboard {
     <div class="psp-modal-body">
       <div id="psp-vervanger-info" class="psp-vervanger-info"></div>
       <div id="psp-vervanger-lijst" class="psp-koppel-opties"></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: Tariefmelding flexexpert -->
-<div id="psp-modal-tarief" class="psp-modal" style="display:none">
-  <div class="psp-modal-box psp-modal-sm">
-    <div class="psp-modal-header">
-      <h2>&#128246; Doorgeven aan flexexpert</h2>
-    </div>
-    <div class="psp-modal-body">
-      <p id="psp-tarief-tekst" style="font-weight:600;margin:0 0 6px"></p>
-      <p style="color:#666;font-size:.85rem;margin:0 0 18px">
-        Dit is de eerste keer dat deze student bij deze opdrachtgever werkt.
-        Vul het uurtarief en loon in en bevestig zodra dit is doorgegeven aan flexexpert.
-      </p>
-      <div class="psp-form-row2">
-        <div class="psp-field">
-          <label>Uurtarief klant (&euro;/uur)</label>
-          <input type="number" id="psp-tarief-uurtarief" step="0.01" min="0" placeholder="bijv. 14.50">
-        </div>
-        <div class="psp-field">
-          <label>Loon student (&euro;/uur)</label>
-          <input type="number" id="psp-tarief-loon" step="0.01" min="0" placeholder="bijv. 12.00">
-        </div>
-      </div>
-    </div>
-    <div class="psp-modal-footer">
-      <button class="psp-btn-primary" id="psp-tarief-save-btn">&#10003; Bevestigen &#8212; doorgegeven aan flexexpert</button>
-      <button class="psp-btn-ghost" id="psp-tarief-skip-btn">Later invullen</button>
     </div>
   </div>
 </div>
@@ -850,21 +807,11 @@ class PSP_Dashboard {
 
         // Geen automatische mail — werkbevestiging verstuurt de recruiter via de WB-modal.
 
-        // Eerste-keer check voor flexexpert-tarief
-        $eerste_keer = false;
-        if ( $beschikbaarheid && $dienst ) {
-            $eerste_keer = PSP_DB::is_eerste_keer( $beschikbaarheid->email, $dienst->opdrachtgever );
-            if ( $eerste_keer ) {
-                PSP_DB::registreer_eerste_keer( $beschikbaarheid->email, $dienst->opdrachtgever );
-            }
-        }
-
         wp_send_json_success( array(
             'message'        => '\u2713 Ingepland.',
             'koppeling_id'   => $koppeling_id,
             'naam'           => $beschikbaarheid ? $beschikbaarheid->naam  : '',
             'email'          => $beschikbaarheid ? $beschikbaarheid->email : '',
-            'eerste_keer'    => $eerste_keer,
             'opdrachtgever'  => $dienst ? $dienst->opdrachtgever : '',
             'student_email'  => $beschikbaarheid ? $beschikbaarheid->email : '',
             'student_naam'   => $beschikbaarheid ? $beschikbaarheid->naam  : '',
@@ -879,38 +826,6 @@ class PSP_Dashboard {
         if ( ! $did ) wp_send_json_error();
         PSP_DB::verwijder_koppeling( $did );
         wp_send_json_success( array( 'message' => 'Koppeling verwijderd.' ) );
-    }
-
-    /* ─────────────── AJAX: tarief opslaan ─────────────── */
-    public static function ajax_save_tarief() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        $email         = sanitize_email( $_POST['student_email']    ?? '' );
-        $opdrachtgever = sanitize_text_field( $_POST['opdrachtgever'] ?? '' );
-        $uurtarief     = floatval( $_POST['uurtarief'] ?? 0 );
-        $loon          = floatval( $_POST['loon']      ?? 0 );
-        if ( ! $email || ! $opdrachtgever ) {
-            wp_send_json_error( array( 'message' => 'Velden ontbreken.' ) );
-        }
-        PSP_DB::save_tarief( $email, $opdrachtgever, $uurtarief, $loon );
-        wp_send_json_success( array( 'message' => '\u2713 Doorgegeven aan flexexpert.' ) );
-    }
-
-    /* ─────────────── AJAX: openstaande tarieven ─────────────── */
-    public static function ajax_tarieven_todo() {
-        check_ajax_referer('psp_dashboard', 'nonce');
-        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        $rows = PSP_DB::get_onbevestigde_tarieven();
-        $out  = array();
-        foreach ( $rows as $r ) {
-            $out[] = array(
-                'student_email' => $r->student_email,
-                'student_naam'  => $r->student_naam ?: $r->student_email,
-                'opdrachtgever' => $r->opdrachtgever,
-                'datum'         => $r->aangemaakt_op ? substr( $r->aangemaakt_op, 0, 10 ) : '',
-            );
-        }
-        wp_send_json_success( $out );
     }
 
     /* ─────────────── AJAX: studenten ophalen ─────────────── */
