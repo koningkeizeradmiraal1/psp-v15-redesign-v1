@@ -1336,7 +1336,11 @@
         vaard[k] = ta.value;
       });
       opslaanVaard.disabled = true; opslaanVaard.textContent = '…';
-      ajax('psp_save_student_vaardigheden', { user_id: userId, vaardigheden: vaard }, function(res) {
+      // ajax() verstuurt platte velden: een object moet als vaardigheden[sleutel] worden doorgegeven,
+      // anders komt er "[object Object]" aan en slaat de server een lege lijst op.
+      var payload = { user_id: userId };
+      Object.keys(vaard).forEach(function (k) { payload['vaardigheden[' + k + ']'] = vaard[k]; });
+      ajax('psp_save_student_vaardigheden', payload, function(res) {
         toast(res.message || '✓ Opgeslagen.', 'success');
         document.getElementById('psp-modal-vaardigheden').style.display = 'none';
         laadStudentenTab();
