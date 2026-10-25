@@ -6,6 +6,7 @@
     initCheckboxes();
     initFormSubmit();
     initLockedDays();
+    initDagDatums();
   });
 
   /* ── Dag-checkboxes: tijd-inputs aan/uit ── */
@@ -63,6 +64,29 @@
 
     applyLockedDays();
     weekSelect.addEventListener('change', applyLockedDays);
+  }
+
+  /* ── Datum bij elke dag (bijv. "Maandag 2 nov") op basis van de gekozen week ── */
+  function initDagDatums() {
+    var weekSelect = document.getElementById('psp-week');
+    if (!weekSelect) return;
+    var MAANDEN = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    var OFFSET  = { ma:0, di:1, wo:2, do:3, vr:4, za:5, zo:6 };
+
+    function update() {
+      var p = weekSelect.value.split('-');           // YYYY-MM-DD (maandag van de week)
+      if (p.length !== 3) return;
+      document.querySelectorAll('.psp-dag-row').forEach(function (row) {
+        var span = row.querySelector('.psp-dag-check span');
+        if (!span) return;
+        if (!span.dataset.naam) span.dataset.naam = span.textContent.trim();
+        var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10) + (OFFSET[row.dataset.dag] || 0));
+        span.textContent = span.dataset.naam + ' ' + d.getDate() + ' ' + MAANDEN[d.getMonth()];
+      });
+    }
+
+    update();
+    weekSelect.addEventListener('change', update);
   }
 
   /* ── AJAX submit ── */

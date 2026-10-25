@@ -401,6 +401,10 @@ class PSP_Frontend {
             wp_send_json_error(['message' => 'Vul alle verplichte velden in.']);
         }
 
+        if ( ! PSP_DB::is_student_actief( $email ) ) {
+            wp_send_json_error(['message' => 'Je account is non-actief. Neem contact op met ProStudents (050 – 311 23 22) om beschikbaarheid door te geven.']);
+        }
+
         $dag_keys = ['ma','di','wo','do','vr','za','zo'];
         $dagen    = [];
         $heeft_dag = false;

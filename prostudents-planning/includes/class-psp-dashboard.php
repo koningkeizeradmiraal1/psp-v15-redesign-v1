@@ -13,6 +13,7 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_delete_beschikbaarheid',        [self::class, 'ajax_delete_beschikbaarheid']);
         add_action('wp_ajax_psp_save_beschikbaarheid_admin',    [self::class, 'ajax_save_beschikbaarheid_admin']);
         add_action('wp_ajax_psp_get_aanmeldingen',              [self::class, 'ajax_get_aanmeldingen']);
+        add_action('wp_ajax_psp_save_student_instellingen', [self::class, 'ajax_save_student_instellingen']);
         add_action('wp_ajax_psp_goedkeur_aanmelding',           [self::class, 'ajax_goedkeur_aanmelding']);
         add_action('wp_ajax_psp_wijs_af_aanmelding',            [self::class, 'ajax_wijs_af_aanmelding']);
         add_action('wp_ajax_psp_get_studenten',          [self::class, 'ajax_get_studenten']);
@@ -543,6 +544,30 @@ class PSP_Dashboard {
   </div>
 </div>
 
+<!-- MODAL: Student-instellingen (actief / geblokkeerde opdrachtgevers) -->
+<div id="psp-modal-student-inst" class="psp-modal" style="display:none">
+  <div class="psp-modal-box psp-modal-sm">
+    <div class="psp-modal-header">
+      <h2>&#9881; Instellingen &mdash; <span id="psp-inst-naam"></span></h2>
+    </div>
+    <div class="psp-modal-body" style="overflow-y:auto;max-height:65vh">
+      <input type="hidden" id="psp-inst-email" value="">
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;font-weight:600">
+        <input type="checkbox" id="psp-inst-actief" style="margin-top:3px;accent-color:#d31775;width:16px;height:16px">
+        <span>Actief<br><small style="font-weight:400;color:#777">Uitvinken = non-actief: verdwijnt uit de beschikbaarheid, kan niet worden ingepland en kan geen beschikbaarheid meer doorgeven.</small></span>
+      </label>
+      <hr style="border:0;border-top:1px solid #eee;margin:14px 0">
+      <p style="font-weight:600;margin:0 0 4px">Mag niet naar deze opdrachtgevers</p>
+      <p style="color:#777;font-size:.82rem;margin:0 0 10px">Vink aan bij welke opdrachtgevers deze uitzendkracht niet meer ingepland mag worden.</p>
+      <div id="psp-inst-og-lijst"></div>
+    </div>
+    <div class="psp-modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="psp-btn-ghost" id="psp-inst-sluit">Annuleren</button>
+      <button class="psp-btn-primary" id="psp-inst-opslaan">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Werkbevestiging template -->
 <div id="psp-modal-wb" class="psp-modal" style="display:none">
   <div class="psp-modal-box">
@@ -664,6 +689,8 @@ class PSP_Dashboard {
 
         $studenten_data = array();
         foreach ( $beschikbaarheid as $b ) {
+            $inst = PSP_DB::get_student_instelling( $b->email );
+            if ( ! $inst['actief'] ) continue; // non-actieve uitzendkrachten verdwijnen uit de beschikbaarheid
             $kops     = PSP_DB::get_koppelingen_voor_beschikbaarheid( $b->id );
             $kops_arr = array();
             foreach ( $kops as $k ) {
@@ -681,6 +708,7 @@ class PSP_Dashboard {
                 'dagen'       => json_decode( $b->dagen, true ) ?: array(),
                 'vaardigheden'=> json_decode( $b->vaardigheden, true ) ?: array(),
                 'koppelingen' => $kops_arr,
+                'geblokkeerd' => $inst['geblokkeerd'],
             );
         }
 
@@ -796,6 +824,18 @@ class PSP_Dashboard {
         $did = (int) ( $_POST['dienst_id']          ?? 0 );
         if ( ! $bid || ! $did ) wp_send_json_error( array( 'message' => 'Ongeldige parameters' ) );
 
+        // Controle: non-actief of niet meer toegestaan bij deze opdrachtgever
+        $chk_b = PSP_DB::get_beschikbaarheid_by_id( $bid );
+        $chk_d = PSP_DB::get_dienst_by_id( $did );
+        if ( $chk_b && $chk_d ) {
+            if ( ! PSP_DB::is_student_actief( $chk_b->email ) ) {
+                wp_send_json_error( array( 'message' => 'Deze uitzendkracht is non-actief en kan niet worden ingepland.' ) );
+            }
+            if ( PSP_DB::is_og_geblokkeerd( $chk_b->email, $chk_d->opdrachtgever ) ) {
+                wp_send_json_error( array( 'message' => $chk_b->naam . ' mag niet meer naar ' . $chk_d->opdrachtgever . ' en kan hier niet worden ingepland.' ) );
+            }
+        }
+
         PSP_DB::verwijder_koppeling( $did ); // Verwijder eventuele bestaande koppeling
         $koppeling_id = PSP_DB::insert_koppeling( $bid, $did );
         if ( ! $koppeling_id ) wp_send_json_error( array( 'message' => 'Koppeling mislukt.' ) );
@@ -854,12 +894,15 @@ class PSP_Dashboard {
                 $email
             ) );
             $vaardigheden = get_user_meta( $u->ID, 'psp_vaardigheden', true );
+            $inst = PSP_DB::get_student_instelling( $email );
             $studenten[] = array(
                 'email'        => $email,
                 'naam'         => $naam_row ?: $u->display_name,
                 'has_account'  => true,
                 'user_id'      => $u->ID,
                 'vaardigheden' => is_array($vaardigheden) ? $vaardigheden : array(),
+                'actief'       => $inst['actief'],
+                'geblokkeerd'  => $inst['geblokkeerd'],
             );
         }
 
@@ -881,12 +924,15 @@ class PSP_Dashboard {
                 $email
             ) );
             $vaardigheden = $wp_user ? get_user_meta( $wp_user->ID, 'psp_vaardigheden', true ) : array();
+            $inst = PSP_DB::get_student_instelling( $email );
             $studenten[] = array(
                 'email'        => $email,
                 'naam'         => $naam_row ?: $email,
                 'has_account'  => $wp_user ? true : false,
                 'user_id'      => $wp_user ? $wp_user->ID : 0,
                 'vaardigheden' => is_array($vaardigheden) ? $vaardigheden : array(),
+                'actief'       => $inst['actief'],
+                'geblokkeerd'  => $inst['geblokkeerd'],
             );
         }
 
@@ -896,6 +942,27 @@ class PSP_Dashboard {
         });
 
         wp_send_json_success( $studenten );
+    }
+
+    /* ─────────────── AJAX: student-instellingen (actief / geblokkeerde opdrachtgevers) ─────────────── */
+    public static function ajax_save_student_instellingen() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $email = sanitize_email( $_POST['email'] ?? '' );
+        if ( ! $email ) wp_send_json_error( array( 'message' => 'Geen e-mailadres.' ) );
+
+        $actief      = ( ( $_POST['actief'] ?? '1' ) === '1' );
+        $geblokkeerd = array();
+        if ( ! empty( $_POST['geblokkeerd'] ) && is_array( $_POST['geblokkeerd'] ) ) {
+            foreach ( $_POST['geblokkeerd'] as $og ) {
+                $og = sanitize_text_field( wp_unslash( $og ) );
+                if ( $og !== '' ) $geblokkeerd[] = $og;
+            }
+        }
+
+        PSP_DB::save_student_instelling( $email, $actief, $geblokkeerd );
+        wp_send_json_success( array( 'message' => '✓ Instellingen opgeslagen.' ) );
     }
 
     /* ─────────────── AJAX: account aanmaken (GEEN welkomsmail) ─────────────── */

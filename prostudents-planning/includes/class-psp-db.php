@@ -555,6 +555,45 @@ class PSP_DB {
         return $wpdb->delete( PSP_TABLE_OPDRACHTGEVERS, array('id' => (int)$id) );
     }
 
+    /* ══════ Student-instellingen (non-actief / geblokkeerde opdrachtgevers) ══════
+       Opgeslagen in één WP-option (geen database-wijziging nodig), per e-mailadres:
+       psp_student_instellingen = [ 'email@x.nl' => ['actief'=>bool, 'geblokkeerd'=>['Opdrachtgever', …]] ] */
+
+    public static function get_student_instelling( $email ) {
+        $alle = get_option( 'psp_student_instellingen', array() );
+        $key  = strtolower( trim( (string) $email ) );
+        $i    = ( is_array($alle) && isset($alle[$key]) && is_array($alle[$key]) ) ? $alle[$key] : array();
+        return array(
+            'actief'      => isset($i['actief']) ? (bool) $i['actief'] : true,
+            'geblokkeerd' => ( isset($i['geblokkeerd']) && is_array($i['geblokkeerd']) ) ? array_values($i['geblokkeerd']) : array(),
+        );
+    }
+
+    public static function save_student_instelling( $email, $actief, $geblokkeerd ) {
+        $alle = get_option( 'psp_student_instellingen', array() );
+        if ( ! is_array($alle) ) $alle = array();
+        $key = strtolower( trim( (string) $email ) );
+        if ( $actief && empty($geblokkeerd) ) {
+            unset( $alle[$key] ); // standaardwaarden: niets opslaan
+        } else {
+            $alle[$key] = array( 'actief' => (bool) $actief, 'geblokkeerd' => array_values( array_unique( (array) $geblokkeerd ) ) );
+        }
+        update_option( 'psp_student_instellingen', $alle, false );
+    }
+
+    public static function is_student_actief( $email ) {
+        $i = self::get_student_instelling( $email );
+        return $i['actief'];
+    }
+
+    public static function is_og_geblokkeerd( $email, $opdrachtgever ) {
+        $i = self::get_student_instelling( $email );
+        foreach ( $i['geblokkeerd'] as $og ) {
+            if ( strcasecmp( trim($og), trim($opdrachtgever) ) === 0 ) return true;
+        }
+        return false;
+    }
+
     public static function get_opdrachtgever_namen() {
         global $wpdb;
         return $wpdb->get_col(

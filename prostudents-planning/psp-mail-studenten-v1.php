@@ -89,6 +89,7 @@ function psp_mail_studenten_ontvangers(): array {
     foreach ($wp_studenten as $u) {
         $email = $u->user_email;
         if (substr($email, -14) === '@psplanning.nl') continue;
+        if (class_exists('PSP_DB') && !PSP_DB::is_student_actief($email)) continue; // non-actief: niet mailen
         $gezien[strtolower($email)] = true;
         $ontvangers[] = [
             'naam' => $u->display_name ?: $u->user_login,
@@ -103,6 +104,7 @@ function psp_mail_studenten_ontvangers(): array {
     );
     foreach ($emails_besch as $email) {
         if (isset($gezien[strtolower($email)])) continue;
+        if (class_exists('PSP_DB') && !PSP_DB::is_student_actief($email)) continue; // non-actief: niet mailen
         $wp_user = get_user_by('email', $email);
         $naam_row = $wpdb->get_var($wpdb->prepare(
             "SELECT naam FROM `{$T_BESCH}` WHERE email = %s ORDER BY created_at DESC LIMIT 1", $email

@@ -416,7 +416,8 @@
               '<div class="psp-ip-chip"><strong>' + esc(d.opdrachtgever) + '</strong><br>' + d.tijdstip_van + '–' + d.tijdstip_tot +
               '<button class="psp-ip-chip-x" data-dienst-id="' + kopDienstId + '" title="Koppeling verwijderen">✕</button></div></td>';
           } else {
-            var openHier = (dpd[datum] || []).filter(function (x) { return !isIngepland(x); }).length;
+            var geblok = (s.geblokkeerd || []).map(function (g) { return g.toLowerCase(); });
+                 var openHier = (dpd[datum] || []).filter(function (x) { return !isIngepland(x) && geblok.indexOf(String(x.opdrachtgever).toLowerCase()) === -1; }).length;
             if (openHier > 0) {
               html += '<td class="psp-ip-cell beschikbaar klikbaar" data-student-id="' + s.id + '" data-datum="' + datum + '">' +
                 '<div class="psp-ip-beschik-tijd">' + dag.van + '–' + dag.tot + '</div>' +
@@ -478,6 +479,7 @@
       '<p class="psp-ziek-melding">🤒 <strong>' + esc(ziekNaam) + '</strong> is ziek. Kies een vervanger:</p>';
     var kand = state.data.beschikbaarheid.filter(function (s) {
       if (s.id === ziekSid || !s.dagen[dk]) return false;
+      if ((s.geblokkeerd || []).some(function (g) { return g.toLowerCase() === String(dienst.opdrachtgever).toLowerCase(); })) return false;
       var dag = s.dagen[dk];
       var tm = function (t) { var p = String(t).split(':'); return parseInt(p[0], 10) * 60 + (parseInt(p[1], 10) || 0); };
       var bVan = tm(dag.van), bTot = tm(dag.tot), dVan = tm(dienst.tijdstip_van), dTot = tm(dienst.tijdstip_tot);
@@ -516,7 +518,8 @@
   function openKoppelModal(student, datum, diensten) {
     if (!diensten) diensten = state.data.diensten;
     var dk = dagKey(datum), dag = student.dagen[dk];
-    var open = diensten.filter(function (d) { return d.datum === datum && !isIngepland(d); });
+    var geblokOg = (student.geblokkeerd || []).map(function (g) { return g.toLowerCase(); });
+    var open = diensten.filter(function (d) { return d.datum === datum && !isIngepland(d) && geblokOg.indexOf(String(d.opdrachtgever).toLowerCase()) === -1; });
     if (state.selectedDienst && state.selectedDienst.datum === datum && !isIngepland(state.selectedDienst)) {
       open.sort(function (a) { return a.id === state.selectedDienst.id ? -1 : 1; });
     }
@@ -586,7 +589,7 @@
     var wrap = document.getElementById('psp-studenten-tabel-wrap');
     if (!studenten.length) { wrap.innerHTML = '<div class="psp-panel-body"><p class="psp-empty-msg">Geen beschikbaarheid.</p></div>'; return; }
     var html = '<table class="psp-table"><thead><tr><th>Naam</th><th>E-mail</th><th>Tel</th>';
-    DAG_KEYS.forEach(function (dk) { html += '<th>' + DAG_NAMES[dk] + '</th>'; });
+    DAG_KEYS.forEach(function (dk, i) { html += '<th>' + DAG_NAMES[dk] + '<br><small style="font-weight:400;opacity:.7">' + fmtNL(addDays(state.week, i)) + '</small></th>'; });
     html += '<th>Ervaring</th><th>Opmerkingen</th><th></th></tr></thead><tbody>';
     studenten.forEach(function (s) {
       html += '<tr><td><strong>' + esc(s.naam) + '</strong></td><td><a href="mailto:' + esc(s.email) + '">' + esc(s.email) + '</a></td><td>' + esc(s.telefoon || '—') + '</td>';
@@ -676,6 +679,7 @@
       _beschStudenten = studenten;
       var opties = '<option value="">— Selecteer student —</option>';
       studenten.forEach(function (s) {
+        if (s.actief === false) return; // non-actieve uitzendkrachten niet aanbieden
         var selected = student && s.email === student.email ? ' selected' : '';
         opties += '<option value="' + esc(s.email) + '"' + selected + '>' + esc(s.naam) + ' (' + esc(s.email) + ')</option>';
       });
@@ -1104,7 +1108,7 @@
       }
 
       var html = '<table class="psp-table"><thead><tr>'
-        + '<th>Naam</th><th>E-mail</th><th>Account</th><th>Vaardigheden</th><th></th>'
+        + '<th>Naam</th><th>E-mail</th><th>Account</th><th>Status</th><th>Vaardigheden</th><th></th>'
         + '</tr></thead><tbody>';
 
       // Toon vaardigheidsbadges
@@ -1131,11 +1135,17 @@
           + '<td><strong>' + esc(s.naam) + '</strong></td>'
           + '<td><small>' + esc(s.email) + '</small></td>'
           + '<td>' + ( s.has_account
-              ? '<span class="psp-badge-groen">&#10003; Actief</span>'
+              ? '<span class="psp-badge-groen">&#10003; Account</span>'
               : '<button class="psp-btn-sm psp-btn-primary psp-maak-acc-btn">Account aanmaken</button>' )
+          + '</td>'
+          + '<td>' + (s.actief === false
+              ? '<span class="psp-badge-grijs" style="background:#eee;color:#888;border-radius:10px;padding:2px 8px;font-size:.75rem;font-weight:700">Non-actief</span>'
+              : '<span class="psp-badge-groen">Actief</span>')
+              + (s.geblokkeerd && s.geblokkeerd.length ? '<br><small style="color:#c0392b">Niet naar: ' + esc(s.geblokkeerd.join(', ')) + '</small>' : '')
           + '</td>'
           + '<td class="psp-vaard-badges-cel">' + vaardBadges(s.vaardigheden) + '</td>'
           + '<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
+          + '<button class="psp-btn-sm psp-btn-ghost psp-inst-btn" data-email="' + esc(s.email) + '" data-naam="' + esc(s.naam) + '" data-actief="' + (s.actief === false ? '0' : '1') + '" data-geblokkeerd=\'' + JSON.stringify(s.geblokkeerd || []).replace(/'/g, "&#39;") + '\'>&#9881; Instellingen</button>'
           + ( s.has_account
               ? '<button class="psp-btn-sm psp-btn-ghost psp-edit-vaard-btn" '
                 + 'data-user-id="' + (s.user_id||0) + '" '
@@ -1175,6 +1185,13 @@
         });
       });
 
+      // Instellingen (non-actief / geblokkeerde opdrachtgevers)
+      el.querySelectorAll('.psp-inst-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openStudentInstModal(btn.dataset.email, btn.dataset.naam, btn.dataset.actief !== '0', JSON.parse(btn.dataset.geblokkeerd || '[]'));
+        });
+      });
+
       // Vaardigheden bewerken -> modal
       el.querySelectorAll('.psp-edit-vaard-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -1205,6 +1222,49 @@
       el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
     });
   }
+
+  /* -- Student-instellingen modal ----------------------------------------- */
+  function openStudentInstModal(email, naam, actief, geblokkeerd) {
+    var modal = document.getElementById('psp-modal-student-inst');
+    if (!modal) return;
+    document.getElementById('psp-inst-naam').textContent = naam;
+    document.getElementById('psp-inst-email').value = email;
+    document.getElementById('psp-inst-actief').checked = !!actief;
+    var lijst = document.getElementById('psp-inst-og-lijst');
+    lijst.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
+    modal.style.display = 'flex';
+
+    ajax('psp_get_opdrachtgevers', {}, function (rows) {
+      var namen = (Array.isArray(rows) ? rows : []).map(function (r) { return r.naam; });
+      // Ook al eerder geblokkeerde namen tonen, mocht de opdrachtgever uit de lijst zijn verdwenen
+      (geblokkeerd || []).forEach(function (g) { if (namen.indexOf(g) === -1) namen.push(g); });
+      if (!namen.length) { lijst.innerHTML = '<p class="psp-empty-msg">Geen opdrachtgevers gevonden.</p>'; return; }
+      lijst.innerHTML = namen.map(function (n) {
+        var chk = (geblokkeerd || []).some(function (g) { return g.toLowerCase() === n.toLowerCase(); }) ? ' checked' : '';
+        return '<label style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" class="psp-inst-og" value="' + esc(n) + '"' + chk + ' style="accent-color:#d31775"> ' + esc(n) + '</label>';
+      }).join('');
+    }, function () { lijst.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>'; });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var sluit = document.getElementById('psp-inst-sluit');
+    if (sluit) sluit.addEventListener('click', function () { document.getElementById('psp-modal-student-inst').style.display = 'none'; });
+    var opsl = document.getElementById('psp-inst-opslaan');
+    if (opsl) opsl.addEventListener('click', function () {
+      var og = [];
+      document.querySelectorAll('#psp-inst-og-lijst .psp-inst-og:checked').forEach(function (c) { og.push(c.value); });
+      var data = { email: document.getElementById('psp-inst-email').value, actief: document.getElementById('psp-inst-actief').checked ? '1' : '0' };
+      og.forEach(function (n, i) { data['geblokkeerd[' + i + ']'] = n; });
+      opsl.disabled = true;
+      ajax('psp_save_student_instellingen', data, function (res) {
+        toast(res.message || '\u2713 Opgeslagen.', 'success');
+        document.getElementById('psp-modal-student-inst').style.display = 'none';
+        opsl.disabled = false;
+        laadStudentenTab();
+        loadWeek();
+      }, function (msg) { toast(msg || 'Opslaan mislukt.', 'error'); opsl.disabled = false; });
+    });
+  });
 
   /* -- Vaardigheden modal ------------------------------------------------- */
   function openVaardModal(userId, naam, huidig) {
