@@ -1192,7 +1192,8 @@ class PSP_Dashboard {
             // Bereken uren
             $van_ts = strtotime( $r->datum . ' ' . $r->tijdstip_van );
             $tot_ts = strtotime( $r->datum . ' ' . $r->tijdstip_tot );
-            $uren   = $tot_ts > $van_ts ? round( ( $tot_ts - $van_ts ) / 3600, 2 ) : 0;
+            if ( $tot_ts <= $van_ts ) $tot_ts += DAY_IN_SECONDS; // nachtdienst over middernacht
+            $uren   = round( ( $tot_ts - $van_ts ) / 3600, 2 );
             $per_student[$key]['totaal_uren'] += $uren;
             $per_student[$key]['diensten'][]   = array(
                 'datum'         => $r->datum,

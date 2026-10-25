@@ -9,7 +9,7 @@
  */
 defined('ABSPATH') || exit;
 
-define('PSP_VERSION', '1.7.4');
+define('PSP_VERSION', '1.7.5');
 define('PSP_DIR',     plugin_dir_path(__FILE__));
 define('PSP_URL',     plugin_dir_url(__FILE__));
 define('PSP_TABLE_BESCHIKBAARHEID', $GLOBALS['wpdb']->prefix . 'ps_beschikbaarheid');
@@ -45,6 +45,31 @@ function psp_register_rollen() {
 }
 // Zorg ook dat de rol altijd beschikbaar is na heractivatie
 add_action('init', 'psp_register_rollen');
+
+/* ── Studenten: na inloggen naar het beschikbaarheidsformulier i.p.v. wp-admin ── */
+function psp_is_student_user( $user ) {
+    return $user instanceof WP_User
+        && ( in_array('psp_student', (array) $user->roles, true) || in_array('psp_aanvraag', (array) $user->roles, true) );
+}
+
+add_filter('login_redirect', function ( $redirect_to, $requested, $user ) {
+    if ( ! psp_is_student_user( $user ) ) return $redirect_to;
+    // Respecteer een expliciet gekozen frontend-pagina (bijv. /mijn-rooster/), maar nooit wp-admin
+    if ( $requested && strpos( $requested, 'wp-admin' ) === false ) return $requested;
+    return home_url('/beschikbaarheid/');
+}, 10, 3);
+
+// Studenten komen niet in wp-admin (AJAX blijft werken) en zien geen WP-adminbalk
+add_action('admin_init', function () {
+    if ( wp_doing_ajax() ) return;
+    if ( is_user_logged_in() && psp_is_student_user( wp_get_current_user() ) && ! current_user_can('edit_posts') ) {
+        wp_safe_redirect( home_url('/beschikbaarheid/') );
+        exit;
+    }
+});
+add_filter('show_admin_bar', function ( $show ) {
+    return ( is_user_logged_in() && psp_is_student_user( wp_get_current_user() ) && ! current_user_can('edit_posts') ) ? false : $show;
+});
 
 function psp_create_pages() {
     if ( ! get_page_by_path('beschikbaarheid') ) {

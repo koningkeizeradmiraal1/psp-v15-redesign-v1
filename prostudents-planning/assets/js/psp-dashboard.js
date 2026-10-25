@@ -479,7 +479,11 @@
     var kand = state.data.beschikbaarheid.filter(function (s) {
       if (s.id === ziekSid || !s.dagen[dk]) return false;
       var dag = s.dagen[dk];
-      if (dag.van > dienst.tijdstip_van || dag.tot < dienst.tijdstip_tot) return false;
+      var tm = function (t) { var p = String(t).split(':'); return parseInt(p[0], 10) * 60 + (parseInt(p[1], 10) || 0); };
+      var bVan = tm(dag.van), bTot = tm(dag.tot), dVan = tm(dienst.tijdstip_van), dTot = tm(dienst.tijdstip_tot);
+      if (bTot <= bVan) bTot += 1440;  // over middernacht
+      if (dTot <= dVan) dTot += 1440;
+      if (bVan > dVan || bTot < dTot) return false;
       return !Object.keys(s.koppelingen).some(function (did) {
         var d = state.data.diensten.find(function (x) { return x.id === parseInt(did); });
         return d && d.datum === dienst.datum && parseInt(did) !== dienst.id;

@@ -165,7 +165,11 @@ class PSP_DB {
             if ( ! isset( $dagen[ $day_nl ] ) ) continue;
             $d = $dagen[ $day_nl ];
             if ( empty( $d['van'] ) || empty( $d['tot'] ) ) continue;
-            if ( $d['van'] <= $van && $d['tot'] >= $tot ) {
+            // Tijden naar minuten; eindtijd <= begintijd = over middernacht (+24u)
+            $m = function ( $t ) { $p = explode( ':', $t ); return ( (int) $p[0] ) * 60 + (int) ( $p[1] ?? 0 ); };
+            $b_van = $m( $d['van'] ); $b_tot = $m( $d['tot'] ); if ( $b_tot <= $b_van ) $b_tot += 1440;
+            $d_van = $m( $van );      $d_tot = $m( $tot );      if ( $d_tot <= $d_van ) $d_tot += 1440;
+            if ( $b_van <= $d_van && $b_tot >= $d_tot ) {
                 $result[] = $row;
             }
         }

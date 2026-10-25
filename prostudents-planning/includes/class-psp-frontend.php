@@ -408,7 +408,8 @@ class PSP_Frontend {
             if (!empty($_POST["dag_{$dag}"])) {
                 $van = sanitize_text_field($_POST["dag_{$dag}_van"] ?? '09:00');
                 $tot = sanitize_text_field($_POST["dag_{$dag}_tot"] ?? '17:00');
-                if ($van && $tot && $van < $tot) {
+                // Let op: tot < van is toegestaan (nachtdienst, bijv. 22:00–02:00 = over middernacht)
+                if ($van && $tot && $van !== $tot) {
                     $dagen[$dag]  = ['van' => $van, 'tot' => $tot];
                     $heeft_dag    = true;
                 }
