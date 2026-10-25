@@ -13,6 +13,7 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_delete_beschikbaarheid',        [self::class, 'ajax_delete_beschikbaarheid']);
         add_action('wp_ajax_psp_save_beschikbaarheid_admin',    [self::class, 'ajax_save_beschikbaarheid_admin']);
         add_action('wp_ajax_psp_get_aanmeldingen',              [self::class, 'ajax_get_aanmeldingen']);
+        add_action('wp_ajax_psp_verberg_student',           [self::class, 'ajax_verberg_student']);
         add_action('wp_ajax_psp_save_student_instellingen', [self::class, 'ajax_save_student_instellingen']);
         add_action('wp_ajax_psp_goedkeur_aanmelding',           [self::class, 'ajax_goedkeur_aanmelding']);
         add_action('wp_ajax_psp_wijs_af_aanmelding',            [self::class, 'ajax_wijs_af_aanmelding']);
@@ -889,12 +890,13 @@ class PSP_Dashboard {
             // Sla nep-emails over
             if ( substr( $email, -14 ) === '@psplanning.nl' ) continue;
             $gezien[ strtolower($email) ] = true;
+            $inst = PSP_DB::get_student_instelling( $email );
+            if ( $inst['verborgen'] ) continue;
             $naam_row = $wpdb->get_var( $wpdb->prepare(
                 "SELECT naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " WHERE email = %s ORDER BY created_at DESC LIMIT 1",
                 $email
             ) );
             $vaardigheden = get_user_meta( $u->ID, 'psp_vaardigheden', true );
-            $inst = PSP_DB::get_student_instelling( $email );
             $studenten[] = array(
                 'email'        => $email,
                 'naam'         => $naam_row ?: $u->display_name,
@@ -914,6 +916,7 @@ class PSP_Dashboard {
         );
         foreach ( $emails_besch as $email ) {
             if ( isset( $gezien[ strtolower($email) ] ) ) continue; // al verwerkt via WP-users
+            if ( PSP_DB::get_student_instelling( $email )['verborgen'] ) continue;
             $wp_user = get_user_by( 'email', $email );
             if ( $wp_user ) {
                 // account bestaat maar heeft misschien andere rol - toon toch
@@ -965,6 +968,16 @@ class PSP_Dashboard {
         wp_send_json_success( array( 'message' => '✓ Instellingen opgeslagen.' ) );
     }
 
+    /* ─────────────── AJAX: student uit de lijst verbergen (bijv. account verwijderd) ─────────────── */
+    public static function ajax_verberg_student() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+        $email = sanitize_email( $_POST['email'] ?? '' );
+        if ( ! $email ) wp_send_json_error( array( 'message' => 'Geen e-mailadres.' ) );
+        PSP_DB::verberg_student( $email );
+        wp_send_json_success( array( 'message' => '✓ Student verwijderd uit de lijst.' ) );
+    }
+
     /* ─────────────── AJAX: account aanmaken (GEEN welkomsmail) ─────────────── */
     public static function ajax_maak_student_account() {
         check_ajax_referer('psp_dashboard', 'nonce');
@@ -989,6 +1002,8 @@ class PSP_Dashboard {
         add_filter( 'wp_new_user_notification_email',       '__return_false' );
         add_filter( 'wp_new_user_notification_email_admin', '__return_false' );
         remove_all_actions( 'user_register' );
+
+        PSP_DB::herstel_student( $email );
 
         $user_id = wp_insert_user( array(
             'user_login'   => $login,
@@ -1314,6 +1329,7 @@ class PSP_Dashboard {
         if ( ! $user ) wp_send_json_error( array( 'message' => 'Gebruiker niet gevonden.' ) );
 
         $user->set_role( 'psp_student' );
+        PSP_DB::herstel_student( $user->user_email );
         delete_user_meta( $user_id, 'psp_status' );
         PSP_Mail::stuur_welkomstmail( $user_id );
 

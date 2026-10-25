@@ -566,13 +566,37 @@ class PSP_DB {
         return array(
             'actief'      => isset($i['actief']) ? (bool) $i['actief'] : true,
             'geblokkeerd' => ( isset($i['geblokkeerd']) && is_array($i['geblokkeerd']) ) ? array_values($i['geblokkeerd']) : array(),
+            'verborgen'   => ! empty($i['verborgen']),
         );
+    }
+
+    /** Verberg een student uit de lijst Student accounts (en zet hem non-actief); data blijft bewaard. */
+    public static function verberg_student( $email ) {
+        $alle = get_option( 'psp_student_instellingen', array() );
+        if ( ! is_array($alle) ) $alle = array();
+        $key  = strtolower( trim( (string) $email ) );
+        $cur  = self::get_student_instelling( $email );
+        $alle[$key] = array( 'actief' => false, 'geblokkeerd' => $cur['geblokkeerd'], 'verborgen' => true );
+        update_option( 'psp_student_instellingen', $alle, false );
+    }
+
+    /** Haal een eerder verborgen student weer terug (bijv. bij nieuw account of goedkeuring). */
+    public static function herstel_student( $email ) {
+        $alle = get_option( 'psp_student_instellingen', array() );
+        $key  = strtolower( trim( (string) $email ) );
+        if ( is_array($alle) && ! empty( $alle[$key]['verborgen'] ) ) {
+            $alle[$key]['verborgen'] = false;
+            $alle[$key]['actief']    = true;
+            update_option( 'psp_student_instellingen', $alle, false );
+        }
     }
 
     public static function save_student_instelling( $email, $actief, $geblokkeerd ) {
         $alle = get_option( 'psp_student_instellingen', array() );
         if ( ! is_array($alle) ) $alle = array();
         $key = strtolower( trim( (string) $email ) );
+        $oud = self::get_student_instelling( $email );
+        if ( $oud['verborgen'] ) return; // verborgen studenten wijzig je niet via deze functie
         if ( $actief && empty($geblokkeerd) ) {
             unset( $alle[$key] ); // standaardwaarden: niets opslaan
         } else {

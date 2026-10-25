@@ -1156,12 +1156,23 @@
                 + 'data-user-id="' + (s.user_id||0) + '" '
                 + 'data-naam="' + esc(s.naam) + '"'
                 + '>&#9993; Welkomsmail</button>'
-              : '' )
+              : '<button class="psp-btn-sm psp-btn-danger psp-verberg-btn" data-email="' + esc(s.email) + '" data-naam="' + esc(s.naam) + '" title="Haal uit deze lijst (gegevens blijven bewaard)">&#10005; Uit lijst</button>' )
           + '</td>'
           + '</tr>';
       });
       html += '</tbody></table>';
       el.innerHTML = html;
+
+      // Student zonder account (bijv. WordPress-account verwijderd) uit de lijst halen
+      el.querySelectorAll('.psp-verberg-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm(btn.dataset.naam + ' uit de lijst halen? Hij/zij verdwijnt ook uit de beschikbaarheid. Bestaande gegevens blijven in de database bewaard.')) return;
+          ajax('psp_verberg_student', { email: btn.dataset.email }, function (res) {
+            toast(res.message || '✓ Verwijderd uit lijst.', 'success');
+            laadStudentenTab(); loadWeek();
+          }, function (msg) { toast(msg || 'Mislukt.', 'error'); });
+        });
+      });
 
       // Account aanmaken
       el.querySelectorAll('.psp-maak-acc-btn').forEach(function (btn) {
