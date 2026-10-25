@@ -9,6 +9,24 @@ class PSP_Student {
         add_action('wp_ajax_psp_wb_bevestig',   [self::class, 'ajax_wb_bevestig']);
     }
 
+    /** Kaart met de twee links om uren door te geven (gebruikt in Mijn Rooster en het beschikbaarheidsformulier). */
+    public static function uren_links_html(): string {
+        $links = array(
+            'ProStudents' => 'https://prostudents.easyflex2go.nl/login',
+            'Proattent'   => 'https://proattent.easyflex2go.nl/login',
+        );
+        $btn = 'display:inline-block;background:#d31775;color:#fff;text-decoration:none;font-weight:700;'
+             . 'padding:9px 18px;border-radius:6px;font-size:.9rem;margin:4px 8px 4px 0';
+        $html  = '<div class="psp-uren-links" style="background:#fff8fc;border:1px solid #f3c6dc;border-radius:8px;padding:14px 18px;margin:0 0 22px">';
+        $html .= '<strong style="display:block;margin-bottom:2px">&#9200; Uren doorgeven</strong>';
+        $html .= '<p style="margin:0 0 8px;color:#666;font-size:.85rem">Kies hieronder het bedrijf waarvoor je hebt gewerkt en geef je uren door.</p>';
+        foreach ( $links as $naam => $url ) {
+            $html .= '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener" style="' . $btn . '">Uren doorgeven &mdash; ' . esc_html( $naam ) . ' &rarr;</a>';
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
     public static function shortcode() {
         if ( ! is_user_logged_in() ) {
             return '<div class="psp-rooster-login"><p>Je moet ingelogd zijn om je rooster te bekijken.</p>'
@@ -48,6 +66,8 @@ class PSP_Student {
                     + Beschikbaarheid doorgeven
                 </a>
             </div>
+
+            <?php echo self::uren_links_html(); ?>
 
             <?php if ( ! empty( $wbs_open ) ) : ?>
             <!-- ── Openstaande werkbevestigingen ── -->

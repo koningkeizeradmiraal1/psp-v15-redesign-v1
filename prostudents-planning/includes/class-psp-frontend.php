@@ -129,6 +129,7 @@ class PSP_Frontend {
         <div class="psp-form-wrap" id="psp-beschikbaarheid">
             <h2 class="psp-form-title">Beschikbaarheid opgeven</h2>
             <?php if ( $is_student ): ?>
+            <?php echo PSP_Student::uren_links_html(); ?>
             <p class="psp-form-intro">Geef hieronder aan wanneer je beschikbaar bent. We plannen je zo snel mogelijk in.</p>
             <?php else: ?>
             <p class="psp-form-intro">Vul je naam, e-mail en beschikbaarheid in. Zodra je wordt ingepland ontvang je een bevestigingsmail.</p>
