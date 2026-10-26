@@ -9,6 +9,22 @@ class PSP_Student {
         add_action('wp_ajax_psp_wb_bevestig',   [self::class, 'ajax_wb_bevestig']);
     }
 
+    /** Navigatie voor studenten: Beschikbaarheid | Mijn rooster. $actief = 'beschikbaarheid' of 'rooster'. */
+    public static function nav_html( string $actief ): string {
+        $items = array(
+            'beschikbaarheid' => array( '&#128197; Beschikbaarheid', home_url('/beschikbaarheid/') ),
+            'rooster'         => array( '&#128203; Mijn rooster',    home_url('/mijn-rooster/') ),
+        );
+        $html = '<nav class="psp-student-nav" style="display:flex;gap:6px;margin:0 0 22px;border-bottom:2px solid #eee">';
+        foreach ( $items as $key => $it ) {
+            $aan  = ( $key === $actief );
+            $css  = 'padding:10px 18px;text-decoration:none;font-weight:700;font-size:.95rem;border-bottom:3px solid '
+                  . ( $aan ? '#d31775' : 'transparent' ) . ';margin-bottom:-2px;color:' . ( $aan ? '#d31775' : '#666' );
+            $html .= '<a href="' . esc_url( $it[1] ) . '" style="' . $css . '"' . ( $aan ? ' aria-current="page"' : '' ) . '>' . $it[0] . '</a>';
+        }
+        return $html . '</nav>';
+    }
+
     /** Kaart met de twee links om uren door te geven (gebruikt in Mijn Rooster en het beschikbaarheidsformulier). */
     public static function uren_links_html(): string {
         $links = array(
@@ -57,6 +73,8 @@ class PSP_Student {
         ob_start();
         ?>
         <div class="psp-rooster-wrap" id="psp-mijn-rooster">
+
+            <?php echo self::nav_html( 'rooster' ); ?>
 
             <div class="psp-rooster-header">
                 <div>

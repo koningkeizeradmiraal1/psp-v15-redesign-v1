@@ -125,14 +125,64 @@ class PSP_Frontend {
                 if ( $week_locked ) $locked_data[$week_start] = $week_locked;
             }
         }
+
+        /* ── Eerder doorgegeven beschikbaarheid van deze student (overzicht + voorinvullen) ── */
+        $eigen_data = [];   // week_start => [dag => ['van'=>, 'tot'=>]]
+        $overzicht  = [];   // week_start => [ [dag, datum_ts, van, tot, ingepland], … ]
+        if ( $is_student && $prefil_email ) {
+            $weken_overzicht = array_keys($weeks);
+            $dit_week = new DateTime('monday this week');
+            array_unshift( $weken_overzicht, $dit_week->format('Y-m-d') );
+            foreach ( array_unique($weken_overzicht) as $week_start ) {
+                $rij = PSP_DB::get_beschikbaarheid_by_email_week( $prefil_email, $week_start );
+                if ( ! $rij ) continue;
+                $d_arr = json_decode( $rij->dagen, true ) ?: [];
+                if ( ! $d_arr ) continue;
+                $eigen_data[$week_start] = $d_arr;
+                foreach ( $dag_offset as $dag => $offset ) {
+                    if ( empty($d_arr[$dag]) ) continue;
+                    $ts = strtotime( $week_start . ' +' . $offset . ' days' );
+                    $overzicht[$week_start][] = [
+                        'dag'        => $dag,
+                        'ts'         => $ts,
+                        'van'        => $d_arr[$dag]['van'],
+                        'tot'        => $d_arr[$dag]['tot'],
+                        'ingepland'  => PSP_DB::is_student_ingepland_op_datum( $prefil_email, date('Y-m-d', $ts) ),
+                    ];
+                }
+            }
+        }
         ?>
         <div class="psp-form-wrap" id="psp-beschikbaarheid">
             <h2 class="psp-form-title">Beschikbaarheid opgeven</h2>
             <?php if ( $is_student ): ?>
+            <?php echo PSP_Student::nav_html( 'beschikbaarheid' ); ?>
             <?php echo PSP_Student::uren_links_html(); ?>
             <p class="psp-form-intro">Geef hieronder aan wanneer je beschikbaar bent. We plannen je zo snel mogelijk in.</p>
             <?php else: ?>
             <p class="psp-form-intro">Vul je naam, e-mail en beschikbaarheid in. Zodra je wordt ingepland ontvang je een bevestigingsmail.</p>
+            <?php endif; ?>
+
+            <?php if ( $overzicht ): ?>
+            <div class="psp-eigen-overzicht" style="background:#f8f9fa;border:1px solid #e3e6e8;border-radius:8px;padding:14px 18px;margin:0 0 24px">
+                <strong style="display:block;margin-bottom:8px">&#128197; Jouw doorgegeven beschikbaarheid</strong>
+                <?php foreach ( $overzicht as $week_start => $items ): ?>
+                <div style="margin-bottom:10px">
+                    <div style="font-size:.8rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">
+                        Week <?php echo esc_html( date('W', strtotime($week_start)) ); ?>
+                        &mdash; <?php echo esc_html( date_i18n('j M', strtotime($week_start)) ); ?> t/m <?php echo esc_html( date_i18n('j M', strtotime($week_start . ' +6 days')) ); ?>
+                    </div>
+                    <?php foreach ( $items as $it ): ?>
+                    <span style="display:inline-block;background:#fff;border:1px solid <?php echo $it['ingepland'] ? '#27ae60' : '#e0e0e0'; ?>;border-radius:6px;padding:4px 10px;margin:2px 6px 2px 0;font-size:.85rem">
+                        <strong><?php echo esc_html( $dagen[$it['dag']] ); ?> <?php echo esc_html( date_i18n('j M', $it['ts']) ); ?></strong>
+                        &middot; <?php echo esc_html( $it['van'] . '–' . $it['tot'] ); ?>
+                        <?php if ( $it['ingepland'] ): ?><span style="color:#1a6b3a;font-weight:700"> &#10003; ingepland</span><?php endif; ?>
+                    </span>
+                    <?php endforeach; ?>
+                </div>
+                <?php endforeach; ?>
+                <p style="margin:6px 0 0;font-size:.8rem;color:#888">Extra beschikbaarheid toevoegen? Kies hieronder de week en vink extra dagen aan &mdash; wat je al hebt doorgegeven blijft staan.</p>
+            </div>
             <?php endif; ?>
 
             <form id="psp-form" novalidate>
@@ -224,6 +274,9 @@ class PSP_Frontend {
         </div>
         <?php if ( $locked_data ): ?>
         <script>window.pspLockedData = <?php echo wp_json_encode( $locked_data ); ?>;</script>
+        <?php endif; ?>
+        <?php if ( $eigen_data ): ?>
+        <script>window.pspEigenData = <?php echo wp_json_encode( $eigen_data ); ?>;</script>
         <?php endif; ?>
         <?php
         return ob_get_clean();

@@ -29,7 +29,8 @@
     if (!weekSelect) return;
 
     function applyLockedDays() {
-      var data = (window.pspLockedData && window.pspLockedData[weekSelect.value]) || {};
+      var data  = (window.pspLockedData && window.pspLockedData[weekSelect.value]) || {};
+      var eigen = (window.pspEigenData  && window.pspEigenData[weekSelect.value])  || {};
       document.querySelectorAll('.psp-dag-row').forEach(function (row) {
         var dag      = row.dataset.dag;
         var checkbox = row.querySelector('.psp-dag-checkbox');
@@ -37,6 +38,20 @@
         var totInput = row.querySelector('input[name$="_tot"]');
         var lockIcon = row.querySelector('.psp-dag-lock');
         var locked   = Object.prototype.hasOwnProperty.call(data, dag);
+
+        // Eerder doorgegeven beschikbaarheid voorinvullen (zodat extra dagen toevoegen niets wist)
+        if (!locked) {
+          if (eigen[dag]) {
+            checkbox.checked = true;
+            vanInput.value   = eigen[dag].van;
+            totInput.value   = eigen[dag].tot;
+          } else {
+            checkbox.checked = false;
+            vanInput.value   = '09:00';
+            totInput.value   = '17:00';
+          }
+          row.classList.toggle('psp-dag-actief', checkbox.checked);
+        }
 
         checkbox.disabled = locked;
         if (lockIcon) lockIcon.style.display = locked ? 'inline' : 'none';
