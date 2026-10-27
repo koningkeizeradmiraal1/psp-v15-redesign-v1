@@ -1176,7 +1176,23 @@ class PSP_Dashboard {
             'inhoud'        => $inhoud_filled,
             'status'        => 'verzonden',
         ) );
-        if ( ! $wb_id ) wp_send_json_error( array( 'message' => 'Werkbevestiging kon niet worden opgeslagen — er is niets verstuurd.' ) );
+        if ( ! $wb_id ) {
+            // Tabel mist mogelijk kolommen: laat dbDelta ontbrekende onderdelen aanvullen en probeer één keer opnieuw
+            $eerste_fout = $wpdb->last_error;
+            PSP_DB::create_tables();
+            $wb_id = PSP_DB::save_werkbevestiging( array(
+                'dienst_id'     => $dienst_id,
+                'student_email' => $student_email,
+                'opdrachtgever' => $dienst->opdrachtgever,
+                'onderwerp'     => $onderwerp_filled,
+                'inhoud'        => $inhoud_filled,
+                'status'        => 'verzonden',
+            ) );
+            if ( ! $wb_id ) {
+                $fout = $wpdb->last_error ?: $eerste_fout;
+                wp_send_json_error( array( 'message' => 'Werkbevestiging kon niet worden opgeslagen — er is niets verstuurd.' . ( $fout ? ' (Databasefout: ' . $fout . ')' : '' ) ) );
+            }
+        }
 
         // Bevestigingslink (ondertekend, gekoppeld aan dit WB-id + e-mailadres van de student)
         $bevestig_link    = home_url( '/mijn-rooster/?wb_bevestig=' . PSP_DB::wb_token( $wb_id, $student_email ) );
