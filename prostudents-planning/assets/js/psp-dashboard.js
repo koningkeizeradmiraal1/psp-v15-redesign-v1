@@ -1504,14 +1504,16 @@
 
   var WB_DEFAULT_ONDERWERP = 'Bevestiging dienst {datum}';
   var WB_DEFAULT_INHOUD =
+    'BELANGRIJK: bevestig deze dienst in je eigen portal.\n' +
+    "Log in op PSPlanning (psplanning.nl), ga naar 'Mijn rooster' en klik bij de dienst op 'Gelezen en akkoord'.\n" +
+    'Pas na jouw bevestiging is de dienst definitief.\n' +
+    '------------------------------------------------------------\n\n' +
     'Beste {naam},\n\n' +
     'Hierbij bevestigen wij jouw dienst bij {opdrachtgever}:\n\n' +
     'Datum:      {datum}\n' +
     'Tijdstip:   {van} – {tot}\n' +
     'Locatie:    {locatie}\n' +
     'Type werk:  {type_werk}\n\n' +
-    'Klik op de onderstaande link om te bevestigen dat je deze werkbevestiging hebt ontvangen en gelezen:\n' +
-    '{bevestig_link}\n\n' +
     'Met vriendelijke groet,\nProStudents';
 
   function openWbModal(r) {
@@ -1570,10 +1572,15 @@
   function defaultWbInhoud(ctx) {
     var datum_nl = ctx.datum ? new Date(ctx.datum + 'T00:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
     var r = [];
+    r.push('BELANGRIJK: bevestig deze dienst in je eigen portal.');
+    r.push("Log in op PSPlanning (psplanning.nl), ga naar 'Mijn rooster' en klik bij de dienst op 'Gelezen en akkoord'.");
+    r.push('Pas na jouw bevestiging is de dienst definitief.');
+    r.push('------------------------------------------------------------');
+    r.push('');
     r.push('Beste ' + ctx.naam + ',');
     r.push('');
     r.push('Hierbij ontvang je de werkbevestiging voor jouw aanstaande dienst bij ' + ctx.og + '.');
-    r.push('Lees deze bevestiging zorgvuldig door en klik onderaan op de bevestigingslink.');
+    r.push('Lees deze bevestiging zorgvuldig door en bevestig daarna je dienst in je portal.');
     r.push('');
     r.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     r.push('DIENSTINFORMATIE');
@@ -1593,18 +1600,6 @@
     r.push('\u2022 Draag geschikte werkkleding tenzij anders afgesproken.');
     r.push('\u2022 Heb je vragen of kun je onverhoopt niet komen? Neem dan direct contact op');
     r.push('  met ProStudents via info@prostudents.nl of 050 \u2013 311 23 22.');
-    r.push('');
-    r.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    r.push('\u2705 BEVESTIG JE WERKBEVESTIGING');
-    r.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    r.push('');
-    r.push('Klik op de onderstaande link om te bevestigen dat je deze werkbevestiging hebt ontvangen en gelezen:');
-    r.push('');
-    r.push(ctx.bevestig_link);
-    r.push('');
-    r.push('Je kunt ook inloggen op het portaal en daar op “Gelezen en akkoord” klikken.');
-    r.push('');
-    r.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     r.push('');
     r.push('Met vriendelijke groet,');
     r.push('');

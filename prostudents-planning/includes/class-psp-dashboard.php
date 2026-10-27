@@ -1162,8 +1162,19 @@ class PSP_Dashboard {
             '{type_werk}'     => $dienst->type_werk ?: '',
             '{bevestig_link}' => $bevestig_link,
         );
-        $inhoud_filled   = str_replace( array_keys($replace), array_values($replace), $inhoud );
+        // Bevestigen gebeurt alleen in het portaal: haal eventuele link-regels uit de tekst
+        $inhoud_schoon = preg_replace( '/^.*(\{bevestig_link\}|\[BEVESTIG LINK\]|onderstaande link|bevestigingslink).*\R?/mi', '', $inhoud );
+        $inhoud_filled   = str_replace( array_keys($replace), array_values($replace), $inhoud_schoon );
         $onderwerp_filled = str_replace( array_keys($replace), array_values($replace), $onderwerp );
+
+        // Verplichte tekst bovenaan: de dienst moet in het eigen portaal worden bevestigd
+        $bevestig_notitie = "BELANGRIJK: bevestig deze dienst in je eigen portal.\n"
+            . "Log in op PSPlanning (psplanning.nl), ga naar 'Mijn rooster' en klik bij de dienst op 'Gelezen en akkoord'.\n"
+            . "Pas na jouw bevestiging is de dienst definitief.\n"
+            . "------------------------------------------------------------\n\n";
+        if ( stripos( $inhoud_filled, 'BELANGRIJK: bevestig deze dienst' ) === false ) {
+            $inhoud_filled = $bevestig_notitie . ltrim( $inhoud_filled );
+        }
 
         // WB opslaan in DB
         $wb_id = PSP_DB::save_werkbevestiging( array(
