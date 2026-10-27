@@ -1148,10 +1148,6 @@ class PSP_Dashboard {
 
         $datum_nl = date_i18n( 'l j F Y', strtotime( $dienst->datum ) );
 
-        // Bevestigingslink genereren
-        $bevestig_token = wp_generate_password( 32, false );
-        $bevestig_link  = home_url( '/mijn-rooster/?wb_bevestig=' . $bevestig_token );
-
         $replace = array(
             '{naam}'          => $student_naam,
             '{datum}'         => $datum_nl,
@@ -1160,10 +1156,16 @@ class PSP_Dashboard {
             '{opdrachtgever}' => $dienst->opdrachtgever,
             '{locatie}'       => $dienst->locatie   ?: '',
             '{type_werk}'     => $dienst->type_werk ?: '',
-            '{bevestig_link}' => $bevestig_link,
+            '{bevestig_link}' => '{bevestig_link}', // wordt hieronder ingevuld zodra het WB-id bekend is
         );
         $inhoud_filled   = str_replace( array_keys($replace), array_values($replace), $inhoud );
         $onderwerp_filled = str_replace( array_keys($replace), array_values($replace), $onderwerp );
+
+        // Zorg dat de tabel bestaat (dbDelta maakt alleen ontbrekende tabellen aan, wijzigt niets bestaands)
+        global $wpdb;
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '" . PSP_TABLE_WERKBEVESTIGINGEN . "'" ) !== PSP_TABLE_WERKBEVESTIGINGEN ) {
+            PSP_DB::create_tables();
+        }
 
         // WB opslaan in DB
         $wb_id = PSP_DB::save_werkbevestiging( array(
@@ -1174,6 +1176,17 @@ class PSP_Dashboard {
             'inhoud'        => $inhoud_filled,
             'status'        => 'verzonden',
         ) );
+        if ( ! $wb_id ) wp_send_json_error( array( 'message' => 'Werkbevestiging kon niet worden opgeslagen — er is niets verstuurd.' ) );
+
+        // Bevestigingslink (ondertekend, gekoppeld aan dit WB-id + e-mailadres van de student)
+        $bevestig_link    = home_url( '/mijn-rooster/?wb_bevestig=' . PSP_DB::wb_token( $wb_id, $student_email ) );
+        $inhoud_filled    = str_replace( '{bevestig_link}', $bevestig_link, $inhoud_filled );
+        $onderwerp_filled = str_replace( '{bevestig_link}', $bevestig_link, $onderwerp_filled );
+        // Staat de link nog niet in de tekst (template zonder {bevestig_link})? Voeg hem onderaan toe.
+        if ( strpos( $inhoud_filled, $bevestig_link ) === false ) {
+            $inhoud_filled .= "\n\nBevestig dat je deze werkbevestiging hebt ontvangen en gelezen via:\n" . $bevestig_link;
+        }
+        PSP_DB::update_wb_tekst( $wb_id, $onderwerp_filled, $inhoud_filled );
 
         // Mail versturen
         $headers = array(
@@ -1192,15 +1205,8 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        global $wpdb;
-        $rows = $wpdb->get_results(
-            "SELECT wb.*, b.naam as student_naam
-             FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " wb
-             LEFT JOIN " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.email = wb.student_email
-             ORDER BY wb.verzonden_op DESC
-             LIMIT 100"
-        );
-        $out = array();
+        $rows = PSP_DB::get_wb_overzicht();
+        $out  = array();
         foreach ( $rows as $r ) {
             $out[] = array(
                 'id'            => (int) $r->id,
@@ -1209,6 +1215,8 @@ class PSP_Dashboard {
                 'student_naam'  => $r->student_naam ?: $r->student_email,
                 'opdrachtgever' => $r->opdrachtgever,
                 'datum'         => $r->datum,
+                'van'           => $r->tijdstip_van ? substr( $r->tijdstip_van, 0, 5 ) : '',
+                'tot'           => $r->tijdstip_tot ? substr( $r->tijdstip_tot, 0, 5 ) : '',
                 'status'        => $r->status,
                 'verzonden_op'  => $r->verzonden_op,
                 'bevestigd_op'  => $r->bevestigd_op,
