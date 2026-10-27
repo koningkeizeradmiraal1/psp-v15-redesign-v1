@@ -106,11 +106,6 @@
         + (d.locatie   ? '<span>&#128205; ' + esc(d.locatie)   + '</span>' : '')
         + (d.type_werk ? '<span>&#128188; ' + esc(d.type_werk) + '</span>' : '')
         + '</div>'
-        + (d.wb_status === 'bevestigd'
-             ? '<div style="margin-top:6px;font-size:.8rem;font-weight:700;color:#15803d">&#10003; Werkbevestiging bevestigd</div>'
-             : d.wb_status === 'verzonden'
-               ? '<div style="margin-top:6px;font-size:.8rem;font-weight:700;color:#b45309">&#9888; Werkbevestiging: nog bevestigen &mdash; klik om te bevestigen</div>'
-               : '')
         + '<div class="psp-kaart-klik-hint">Klik voor details &rsaquo;</div>'
         + '</div>';
     }).join('');
@@ -134,35 +129,7 @@
       + '<div class="psp-dm-rij"><span class="psp-dm-label">&#127970; Opdrachtgever</span><span>' + esc(d.opdrachtgever) + '</span></div>'
       + (d.locatie    ? '<div class="psp-dm-rij"><span class="psp-dm-label">&#128205; Locatie</span><span>'      + esc(d.locatie)    + '</span></div>' : '')
       + (d.type_werk  ? '<div class="psp-dm-rij"><span class="psp-dm-label">&#128188; Werkzaamheden</span><span>' + esc(d.type_werk)  + '</span></div>' : '')
-      + (d.omschrijving ? '<div class="psp-dm-rij" style="align-items:flex-start"><span class="psp-dm-label">&#128221; Info</span><span style="white-space:pre-wrap">' + esc(d.omschrijving) + '</span></div>' : '')
-      + (d.wb_status === 'bevestigd'
-          ? '<div class="psp-dm-rij"><span class="psp-dm-label">&#128231; Werkbevestiging</span><span style="color:#15803d;font-weight:700">&#10003; Bevestigd' + (d.wb_bevestigd_op ? ' op ' + esc(d.wb_bevestigd_op) : '') + '</span></div>'
-          : d.wb_status === 'verzonden'
-            ? '<div class="psp-dm-rij" style="align-items:center"><span class="psp-dm-label">&#128231; Werkbevestiging</span>'
-              + '<span><button type="button" id="psp-dm-wb-btn" class="psp-rooster-btn" style="background:#27ae60;border:0;cursor:pointer">&#10003; Gelezen en akkoord</button></span></div>'
-            : '');
-    var wbBtn = document.getElementById('psp-dm-wb-btn');
-    if (wbBtn) wbBtn.addEventListener('click', function () {
-      wbBtn.disabled = true; wbBtn.textContent = '…';
-      var fd = new FormData();
-      fd.append('action', 'psp_wb_bevestig');
-      fd.append('nonce',  globalNonce || ((document.getElementById('psp_student_nonce') || {}).value || ''));
-      fd.append('wb_id',  d.wb_id);
-      fetch(ajaxUrl, { method: 'POST', body: fd })
-        .then(function (r) { return r.json(); })
-        .then(function (res) {
-          if (res && res.success) {
-            modal.style.display = 'none';
-            var kaartTop = document.getElementById('psp-wb-kaart-' + d.wb_id);
-            if (kaartTop) kaartTop.style.display = 'none';
-            laadDiensten();
-          } else {
-            wbBtn.disabled = false; wbBtn.innerHTML = '&#10003; Gelezen en akkoord';
-            alert((res && res.data && res.data.message) ? res.data.message : 'Bevestigen mislukt, probeer opnieuw.');
-          }
-        })
-        .catch(function () { wbBtn.disabled = false; wbBtn.innerHTML = '&#10003; Gelezen en akkoord'; alert('Netwerkfout, probeer opnieuw.'); });
-    });
+      + (d.omschrijving ? '<div class="psp-dm-rij" style="align-items:flex-start"><span class="psp-dm-label">&#128221; Info</span><span style="white-space:pre-wrap">' + esc(d.omschrijving) + '</span></div>' : '');
     modal.style.display = 'flex';
   }
 

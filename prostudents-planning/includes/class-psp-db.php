@@ -464,7 +464,7 @@ class PSP_DB {
         if ( $existing ) {
             $wpdb->update(
                 PSP_TABLE_WERKBEVESTIGINGEN,
-                array( 'student_email' => $student_email, 'opdrachtgever' => $opdrachtgever, 'onderwerp' => $onderwerp, 'inhoud' => $inhoud, 'status' => 'verzonden', 'bevestigd_op' => null, 'verzonden_op' => current_time('mysql') ),
+                array( 'onderwerp' => $onderwerp, 'inhoud' => $inhoud, 'status' => 'verzonden', 'bevestigd_op' => null, 'verzonden_op' => current_time('mysql') ),
                 array( 'id' => $existing )
             );
             return (int) $existing;
@@ -478,47 +478,6 @@ class PSP_DB {
             'status'        => 'verzonden',
         ) );
         return $wpdb->insert_id;
-    }
-
-    /** Tekst van een werkbevestiging bijwerken (na het invullen van de bevestigingslink). */
-    public static function update_wb_tekst( $id, $onderwerp, $inhoud ) {
-        global $wpdb;
-        return $wpdb->update(
-            PSP_TABLE_WERKBEVESTIGINGEN,
-            array( 'onderwerp' => sanitize_text_field( $onderwerp ), 'inhoud' => wp_kses_post( $inhoud ) ),
-            array( 'id' => (int) $id )
-        );
-    }
-
-    /** Ondertekende bevestigingstoken: "<id>-<hmac>" — gekoppeld aan werkbevestiging + e-mailadres student. */
-    public static function wb_token( $id, $email ) {
-        $id = (int) $id;
-        return $id . '-' . substr( hash_hmac( 'sha256', $id . '|' . strtolower( trim( (string) $email ) ), wp_salt( 'auth' ) ), 0, 24 );
-    }
-
-    /** Geef de werkbevestiging terug als de token klopt, anders null. */
-    public static function verifieer_wb_token( $token ) {
-        $delen = explode( '-', (string) $token, 2 );
-        $id    = (int) $delen[0];
-        if ( ! $id || empty( $delen[1] ) ) return null;
-        global $wpdb;
-        $wb = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " WHERE id = %d", $id ) );
-        if ( ! $wb ) return null;
-        return hash_equals( self::wb_token( $wb->id, $wb->student_email ), (string) $token ) ? $wb : null;
-    }
-
-    /** Overzicht van alle werkbevestigingen met dienstgegevens (voor Beheer → Bevestigingen). */
-    public static function get_wb_overzicht( $limit = 200 ) {
-        global $wpdb;
-        return $wpdb->get_results( $wpdb->prepare(
-            "SELECT wb.*, d.datum, d.tijdstip_van, d.tijdstip_tot, d.titel,
-                    (SELECT b.naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " b WHERE b.email = wb.student_email ORDER BY b.id DESC LIMIT 1) AS student_naam
-             FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " wb
-             LEFT JOIN " . PSP_TABLE_DIENSTEN . " d ON d.id = wb.dienst_id
-             ORDER BY (wb.status = 'bevestigd') ASC, wb.verzonden_op DESC
-             LIMIT %d",
-            (int) $limit
-        ) );
     }
 
     public static function get_wb_voor_dienst( $dienst_id ) {

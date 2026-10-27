@@ -43,26 +43,9 @@ class PSP_Student {
         return $html;
     }
 
-    /** Verwerk een bevestigingslink uit de mail (?wb_bevestig=TOKEN). Geeft een melding (HTML) terug, of ''. */
-    private static function verwerk_bevestig_token(): string {
-        if ( empty( $_GET['wb_bevestig'] ) ) return '';
-        $wb = PSP_DB::verifieer_wb_token( sanitize_text_field( wp_unslash( $_GET['wb_bevestig'] ) ) );
-        if ( ! $wb ) {
-            return '<div style="background:#fff0f4;border-left:4px solid #d31775;padding:12px 16px;border-radius:6px;margin:0 0 18px;color:#a0124d">'
-                 . 'Deze bevestigingslink is ongeldig of verlopen. Log in en bevestig je werkbevestiging in je rooster.</div>';
-        }
-        if ( $wb->status !== 'bevestigd' ) {
-            PSP_DB::bevestig_wb( $wb->id, $wb->student_email );
-        }
-        return '<div style="background:#eafbf0;border-left:4px solid #27ae60;padding:12px 16px;border-radius:6px;margin:0 0 18px;color:#1a6b3a">'
-             . '<strong>&#10003; Bedankt!</strong> Je hebt je werkbevestiging bij ' . esc_html( $wb->opdrachtgever ) . ' bevestigd.</div>';
-    }
-
     public static function shortcode() {
-        $token_melding = self::verwerk_bevestig_token();
-
         if ( ! is_user_logged_in() ) {
-            return $token_melding . '<div class="psp-rooster-login"><p>Je moet ingelogd zijn om je rooster te bekijken.</p>'
+            return '<div class="psp-rooster-login"><p>Je moet ingelogd zijn om je rooster te bekijken.</p>'
                  . '<a href="' . esc_url( wp_login_url( get_permalink() ) ) . '" class="psp-rooster-btn">Inloggen</a></div>';
         }
 
@@ -91,7 +74,6 @@ class PSP_Student {
         ?>
         <div class="psp-rooster-wrap" id="psp-mijn-rooster">
 
-            <?php echo $token_melding; ?>
             <?php echo self::nav_html( 'rooster' ); ?>
 
             <div class="psp-rooster-header">
@@ -209,16 +191,7 @@ class PSP_Student {
                 'omschrijving'  => $d->omschrijving,
                 'titel'         => $d->titel,
                 'status'        => $d->status,
-                'wb_id'         => null,
-                'wb_status'     => null,
-                'wb_bevestigd_op' => null,
             );
-            $wb = PSP_DB::get_wb_voor_dienst( $d->id );
-            if ( $wb && strcasecmp( $wb->student_email, $email ) === 0 ) {
-                $item['wb_id']           = (int) $wb->id;
-                $item['wb_status']       = $wb->status;
-                $item['wb_bevestigd_op'] = $wb->bevestigd_op ? date_i18n( 'j M Y H:i', strtotime( $wb->bevestigd_op ) ) : null;
-            }
             if ( $d->datum >= $today ) $komend[]   = $item;
             else                       $verleden[] = $item;
         }
