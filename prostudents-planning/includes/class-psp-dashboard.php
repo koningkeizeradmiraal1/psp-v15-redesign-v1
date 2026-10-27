@@ -1185,6 +1185,10 @@ class PSP_Dashboard {
             'inhoud'        => $inhoud_filled,
             'status'        => 'verzonden',
         ) );
+        if ( ! $wb_id ) {
+            $fout = $wpdb->last_error;
+            wp_send_json_error( array( 'message' => 'Werkbevestiging kon niet worden opgeslagen — er is niets verstuurd.' . ( $fout ? ' (Databasefout: ' . $fout . ')' : '' ) ) );
+        }
 
         // Mail versturen
         $headers = array(
@@ -1203,15 +1207,8 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        global $wpdb;
-        $rows = $wpdb->get_results(
-            "SELECT wb.*, b.naam as student_naam
-             FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " wb
-             LEFT JOIN " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.email = wb.student_email
-             ORDER BY wb.verzonden_op DESC
-             LIMIT 100"
-        );
-        $out = array();
+        $rows = PSP_DB::get_wb_overzicht();
+        $out  = array();
         foreach ( $rows as $r ) {
             $out[] = array(
                 'id'            => (int) $r->id,
@@ -1220,6 +1217,8 @@ class PSP_Dashboard {
                 'student_naam'  => $r->student_naam ?: $r->student_email,
                 'opdrachtgever' => $r->opdrachtgever,
                 'datum'         => $r->datum,
+                'van'           => $r->tijdstip_van ? substr( $r->tijdstip_van, 0, 5 ) : '',
+                'tot'           => $r->tijdstip_tot ? substr( $r->tijdstip_tot, 0, 5 ) : '',
                 'status'        => $r->status,
                 'verzonden_op'  => $r->verzonden_op,
                 'bevestigd_op'  => $r->bevestigd_op,

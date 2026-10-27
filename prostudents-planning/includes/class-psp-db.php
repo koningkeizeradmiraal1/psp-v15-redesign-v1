@@ -448,8 +448,25 @@ class PSP_DB {
 
     /* ══════ Verstuurde werkbevestigingen ══════ */
 
+    /** Zorgt dat de tabel met werkbevestigingen bestaat en alle kolommen heeft (dbDelta voegt alleen ontbrekende onderdelen toe). */
+    public static function ensure_wb_tabel() {
+        global $wpdb;
+        $tbl = PSP_TABLE_WERKBEVESTIGINGEN;
+        $bestaat = ( $wpdb->get_var( "SHOW TABLES LIKE '" . esc_sql( $tbl ) . "'" ) === $tbl );
+        $kolommen_ok = false;
+        if ( $bestaat ) {
+            $kols = $wpdb->get_col( "SHOW COLUMNS FROM `$tbl`" );
+            $kolommen_ok = is_array( $kols ) && count( array_diff(
+                array( 'id','dienst_id','student_email','opdrachtgever','onderwerp','inhoud','status','verzonden_op','bevestigd_op' ), $kols ) ) === 0;
+        }
+        if ( ! $bestaat || ! $kolommen_ok ) {
+            self::create_tables();
+        }
+    }
+
     public static function save_werkbevestiging( $data ) {
         global $wpdb;
+        self::ensure_wb_tabel();
         $dienst_id    = (int) ( isset($data['dienst_id'])    ? $data['dienst_id']    : 0 );
         $student_email= sanitize_email( isset($data['student_email']) ? $data['student_email'] : '' );
         $opdrachtgever= sanitize_text_field( isset($data['opdrachtgever']) ? $data['opdrachtgever'] : '' );
@@ -464,7 +481,7 @@ class PSP_DB {
         if ( $existing ) {
             $wpdb->update(
                 PSP_TABLE_WERKBEVESTIGINGEN,
-                array( 'onderwerp' => $onderwerp, 'inhoud' => $inhoud, 'status' => 'verzonden', 'bevestigd_op' => null, 'verzonden_op' => current_time('mysql') ),
+                array( 'student_email' => $student_email, 'opdrachtgever' => $opdrachtgever, 'onderwerp' => $onderwerp, 'inhoud' => $inhoud, 'status' => 'verzonden', 'bevestigd_op' => null, 'verzonden_op' => current_time('mysql') ),
                 array( 'id' => $existing )
             );
             return (int) $existing;
@@ -478,6 +495,21 @@ class PSP_DB {
             'status'        => 'verzonden',
         ) );
         return $wpdb->insert_id;
+    }
+
+    /** Overzicht van alle werkbevestigingen met dienstgegevens (voor Beheer → Bevestigingen). */
+    public static function get_wb_overzicht( $limit = 200 ) {
+        global $wpdb;
+        self::ensure_wb_tabel();
+        return $wpdb->get_results( $wpdb->prepare(
+            "SELECT wb.*, d.datum, d.tijdstip_van, d.tijdstip_tot, d.titel,
+                    (SELECT b.naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " b WHERE b.email = wb.student_email ORDER BY b.id DESC LIMIT 1) AS student_naam
+             FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " wb
+             LEFT JOIN " . PSP_TABLE_DIENSTEN . " d ON d.id = wb.dienst_id
+             ORDER BY (wb.status = 'bevestigd') ASC, wb.verzonden_op DESC
+             LIMIT %d",
+            (int) $limit
+        ) );
     }
 
     public static function get_wb_voor_dienst( $dienst_id ) {

@@ -1753,18 +1753,25 @@
     el.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
     ajax('psp_wb_bevestigingen', {}, function (data) {
       if (!Array.isArray(data) || !data.length) {
-        el.innerHTML = '<p class="psp-empty-msg">✓ Geen nieuwe bevestigingen.</p>';
+        el.innerHTML = '<p class="psp-empty-msg">Er zijn nog geen werkbevestigingen verstuurd.</p>';
         return;
       }
-      var html = '<table class="psp-table"><thead><tr>'
-        + '<th>Student</th><th>Opdrachtgever</th><th>Dienst datum</th><th>Bevestigd op</th>'
+      var open = data.filter(function (r) { return r.status !== 'bevestigd'; }).length;
+      var html = '<p style="margin:0 0 12px;font-size:.88rem"><strong>' + open + '</strong> nog niet bevestigd &middot; <strong>' + (data.length - open) + '</strong> bevestigd</p>'
+        + '<table class="psp-table"><thead><tr>'
+        + '<th>Student</th><th>Opdrachtgever</th><th>Dienst</th><th>Verzonden</th><th>Status</th>'
         + '</tr></thead><tbody>';
       data.forEach(function (r) {
+        var dienst = r.datum ? fmtNL(new Date(r.datum)) + (r.van ? ' &middot; ' + esc(r.van) + '&ndash;' + esc(r.tot) : '') : '&mdash;';
+        var status = r.status === 'bevestigd'
+          ? '<strong style="color:#15803d">&#10003; Bevestigd</strong><br><small>' + esc((r.bevestigd_op || '').substring(0, 16)) + '</small>'
+          : '<strong style="color:#b45309">&#9203; Nog niet bevestigd</strong>';
         html += '<tr>'
-          + '<td>' + esc(r.student_email) + '</td>'
+          + '<td><strong>' + esc(r.student_naam) + '</strong><br><small>' + esc(r.student_email) + '</small></td>'
           + '<td>' + esc(r.opdrachtgever) + '</td>'
-          + '<td>' + esc(r.datum) + '</td>'
-          + '<td><strong style="color:#15803d">' + esc((r.bevestigd_op || '').substring(0, 16)) + '</strong></td>'
+          + '<td>' + dienst + '</td>'
+          + '<td><small>' + esc((r.verzonden_op || '').substring(0, 16)) + '</small></td>'
+          + '<td>' + status + '</td>'
           + '</tr>';
       });
       html += '</tbody></table>';

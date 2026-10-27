@@ -163,6 +163,7 @@ class PSP_Student {
         if ( ! is_user_logged_in() ) wp_send_json_error();
 
         global $wpdb;
+        PSP_DB::ensure_wb_tabel();
         $email = wp_get_current_user()->user_email;
         $today = current_time('Y-m-d');
 
