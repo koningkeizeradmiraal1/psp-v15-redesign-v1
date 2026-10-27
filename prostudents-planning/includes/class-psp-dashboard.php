@@ -77,7 +77,6 @@ class PSP_Dashboard {
       <button class="psp-tab" data-tab="studenten">Beschikbaarheid</button>
       <button class="psp-tab" data-tab="inplannen">Inplannen</button>
       <button class="psp-tab" data-tab="beheer">&#9881; Beheer</button>
-      <button class="psp-tab" data-tab="evenementen">&#127965; Evenementen</button>
     </div>
     <div class="psp-dash-week-nav">
       <button class="psp-btn-icon" id="psp-prev-week">◀</button>
@@ -441,44 +440,6 @@ class PSP_Dashboard {
   </div>
 </div>
 
-
-  <!-- TAB: Evenementen -->
-  <div id="psp-tab-evenementen" class="psp-tab-panel" style="display:none">
-    <div class="psp-ev-toolbar">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <label class="psp-filter-label">Opdrachtgever:</label>
-        <select id="psp-ev-filter-og" class="psp-filter-select"><option value="">— Alle —</option></select>
-        <button class="psp-btn-primary psp-btn-sm" id="psp-ev-nieuw-btn">+ Nieuw evenement</button>
-      </div>
-      <span id="psp-ev-count" style="font-size:.78rem;color:#9ca3af;"></span>
-    </div>
-    <div id="psp-ev-lijst" class="psp-ev-lijst"><p class="psp-empty-msg">Laden...</p></div>
-  </div>
-
-  <!-- MODAL: Evenement bewerken -->
-  <div id="psp-modal-evenement" class="psp-modal" style="display:none">
-    <div class="psp-modal-box psp-modal-sm">
-      <div class="psp-modal-header">
-        <h2 id="psp-modal-ev-title">Evenement</h2>
-        <button class="psp-modal-close" data-modal="psp-modal-evenement">&#10005;</button>
-      </div>
-      <div class="psp-modal-body">
-        <input type="hidden" id="psp-ev-id" value="">
-        <div class="psp-form-row2">
-          <div class="psp-field"><label>Datum</label><input type="date" id="psp-ev-datum"></div>
-          <div class="psp-field"><label>Opdrachtgever</label><input type="text" id="psp-ev-og" list="psp-og-list" placeholder="Naam opdrachtgever"></div>
-        </div>
-        <div class="psp-field"><label>Medewerker</label><input type="text" id="psp-ev-medewerker" placeholder="Naam of 'Nog in te vullen'"></div>
-        <div class="psp-field"><label>Dienst / tijden</label><input type="text" id="psp-ev-info" placeholder="bijv. 09:00–17:00 Catering"></div>
-        <div class="psp-field"><label>Notities</label><textarea id="psp-ev-notities" rows="2" style="resize:vertical"></textarea></div>
-      </div>
-      <div class="psp-modal-footer">
-        <button class="psp-btn-primary" id="psp-ev-opslaan-btn">Opslaan</button>
-        <button class="psp-btn-ghost psp-modal-close" data-modal="psp-modal-evenement">Annuleren</button>
-        <button class="psp-btn-danger" id="psp-ev-verwijder-btn" style="display:none">Verwijderen</button>
-      </div>
-    </div>
-  </div>
 
 <!-- MODAL: Opdrachtgever aanmaken/bewerken -->
 <div id="psp-modal-og" class="psp-modal" style="display:none">

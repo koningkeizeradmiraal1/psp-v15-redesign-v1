@@ -64,7 +64,6 @@
         if (panel) panel.style.display = '';
         if (btn.dataset.tab === 'diensten')  renderDienstenTabel();
         if (btn.dataset.tab === 'studenten') renderStudentenTabel();
-    if (btn.dataset.tab === 'evenementen' && !_evLoaded) initEvenementenTab();
         if (btn.dataset.tab === 'inplannen') renderInplannenView();
         if (btn.dataset.tab === 'beheer')    initBeheerTab();
       });
@@ -82,7 +81,6 @@
     ajax('psp_week_data', { week_start: fmt(state.week) }, function (data) {
       state.data = data; state.selectedDienst = null; state.ipDienst = null; state.ipStudent = null;
       updateWeekLabel(); updateFilterDropdown(); applyFilter();
-      loadWeekEvenementenStrip(fmt(state.week));
       setLoader(false);
     }, function () { toast('Laden mislukt.', 'error'); setLoader(false); });
   }
