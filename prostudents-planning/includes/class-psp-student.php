@@ -191,7 +191,16 @@ class PSP_Student {
                 'omschrijving'  => $d->omschrijving,
                 'titel'         => $d->titel,
                 'status'        => $d->status,
+                'wb_id'         => null,
+                'wb_status'     => null,
+                'wb_bevestigd_op' => null,
             );
+            $wb = PSP_DB::get_wb_voor_dienst( $d->id );
+            if ( $wb && strcasecmp( $wb->student_email, $email ) === 0 ) {
+                $item['wb_id']           = (int) $wb->id;
+                $item['wb_status']       = $wb->status;
+                $item['wb_bevestigd_op'] = $wb->bevestigd_op ? date_i18n( 'j M Y H:i', strtotime( $wb->bevestigd_op ) ) : null;
+            }
             if ( $d->datum >= $today ) $komend[]   = $item;
             else                       $verleden[] = $item;
         }
