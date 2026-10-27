@@ -1098,9 +1098,25 @@ class PSP_Dashboard {
             }
         }
 
+        // Dienstgegevens meesturen zodat de {variabelen} (datum, tijd, locatie, type werk) vooraf kunnen worden ingevuld
+        $dienst_ctx = null;
+        if ( $dienst_id ) {
+            $dn = PSP_DB::get_dienst_by_id( $dienst_id );
+            if ( $dn ) {
+                $dienst_ctx = array(
+                    'datum'     => $dn->datum,
+                    'van'       => substr( $dn->tijdstip_van, 0, 5 ),
+                    'tot'       => substr( $dn->tijdstip_tot, 0, 5 ),
+                    'locatie'   => $dn->locatie   ?: '',
+                    'type_werk' => $dn->type_werk ?: '',
+                );
+            }
+        }
+
         wp_send_json_success( array(
             'templates' => $templates,
             'bestaande' => $bestaande_data,
+            'dienst'    => $dienst_ctx,
         ) );
     }
 

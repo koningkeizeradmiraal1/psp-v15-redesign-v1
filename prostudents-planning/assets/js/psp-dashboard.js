@@ -1640,9 +1640,12 @@
       var bestaande = res.bestaande || null;
       var templBtns = document.getElementById('psp-wbs-template-btns');
       var templWrap = document.getElementById('psp-wbs-template-keuze');
+      var dn  = res.dienst || {};
+      var ctx = { naam: naam, og: og, bevestig_link: '{bevestig_link}',
+                  datum: dn.datum || '', van: dn.van || '', tot: dn.tot || '',
+                  locatie: dn.locatie || '', type_werk: dn.type_werk || '' };
 
       if (templates.length && templBtns && templWrap) {
-        var ctx = { naam: naam, og: og, bevestig_link: '' };
         templBtns.innerHTML = templates.map(function (t) {
           return '<button type="button" class="psp-btn-sm psp-btn-ghost psp-wbs-templ-btn" data-id="' + t.id + '">' + esc(t.naam) + '</button>';
         }).join('');
@@ -1672,13 +1675,23 @@
         }
       } else {
         document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
-        document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
+        // Is er precies één template voor deze opdrachtgever? Dan meteen dat template gebruiken, vooraf ingevuld.
+        if (templates.length === 1) {
+          document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(templates[0].onderwerp, ctx) || ('Werkbevestiging ' + og);
+          document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(templates[0].inhoud, ctx);
+        } else {
+          document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud(ctx);
+        }
       }
 
       modal.style.display = 'flex';
     }, function () {
+      // Fallback: dienstgegevens uit de geladen week halen
+      var d = (state.data && state.data.diensten || []).find(function (x) { return String(x.id) === String(dienstId); }) || {};
+      var fctx = { naam: naam, og: og, bevestig_link: '{bevestig_link}', datum: d.datum || '', van: d.tijdstip_van ? String(d.tijdstip_van).substring(0, 5) : '',
+                   tot: d.tijdstip_tot ? String(d.tijdstip_tot).substring(0, 5) : '', locatie: d.locatie || '', type_werk: d.type_werk || '' };
       document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
-      document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud({ naam: naam, og: og, bevestig_link: '[BEVESTIG LINK]' });
+      document.getElementById('psp-wbs-inhoud').value    = defaultWbInhoud(fctx);
       modal.style.display = 'flex';
     });
   }
