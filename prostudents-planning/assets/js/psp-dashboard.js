@@ -393,7 +393,7 @@
       html += '</tr></thead><tbody>';
 
       sorted.forEach(function (s) {
-        html += '<tr><td class="psp-ip-grid-namecol"><strong>' + esc(s.naam) + '</strong>';
+        html += '<tr><td class="psp-ip-grid-namecol"><strong>' + esc(s.naam) + '</strong>' + (Object.keys(s.dagen || {}).length ? '' : '<br><small style="color:#b45309;font-weight:700">&#127958; Niet beschikbaar deze week</small>');
         if (s.vaardigheden && s.vaardigheden.length) html += renderVaardigheden(s.vaardigheden);
         html += '</td>';
         DAG_KEYS.forEach(function (dk) {
@@ -590,7 +590,7 @@
     DAG_KEYS.forEach(function (dk, i) { html += '<th>' + DAG_NAMES[dk] + '<br><small style="font-weight:400;opacity:.7">' + fmtNL(addDays(state.week, i)) + '</small></th>'; });
     html += '<th>Ervaring</th><th>Opmerkingen</th><th></th></tr></thead><tbody>';
     studenten.forEach(function (s) {
-      html += '<tr><td><strong>' + esc(s.naam) + '</strong></td><td><a href="mailto:' + esc(s.email) + '">' + esc(s.email) + '</a></td><td>' + esc(s.telefoon || '—') + '</td>';
+      html += '<tr><td><strong>' + esc(s.naam) + '</strong>' + (Object.keys(s.dagen || {}).length ? '' : '<br><small style="color:#b45309;font-weight:700">&#127958; Niet beschikbaar</small>') + '</td><td><a href="mailto:' + esc(s.email) + '">' + esc(s.email) + '</a></td><td>' + esc(s.telefoon || '—') + '</td>';
       DAG_KEYS.forEach(function (dk) {
         var dag = s.dagen[dk];
         html += '<td>' + (dag ? dag.van + '–' + dag.tot : '<span style="color:#ddd">—</span>') + '</td>';

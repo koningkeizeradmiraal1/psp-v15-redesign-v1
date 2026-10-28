@@ -127,6 +127,7 @@ class PSP_Frontend {
         }
 
         /* ── Eerder doorgegeven beschikbaarheid van deze student (overzicht + voorinvullen) ── */
+        $niet_weken = [];   // week_start => true (hele week niet beschikbaar doorgegeven)
         $eigen_data = [];   // week_start => [dag => ['van'=>, 'tot'=>]]
         $overzicht  = [];   // week_start => [ [dag, datum_ts, van, tot, ingepland], … ]
         if ( $is_student && $prefil_email ) {
@@ -137,7 +138,7 @@ class PSP_Frontend {
                 $rij = PSP_DB::get_beschikbaarheid_by_email_week( $prefil_email, $week_start );
                 if ( ! $rij ) continue;
                 $d_arr = json_decode( $rij->dagen, true ) ?: [];
-                if ( ! $d_arr ) continue;
+                if ( ! $d_arr ) { $niet_weken[$week_start] = true; continue; }
                 $eigen_data[$week_start] = $d_arr;
                 foreach ( $dag_offset as $dag => $offset ) {
                     if ( empty($d_arr[$dag]) ) continue;
@@ -163,9 +164,18 @@ class PSP_Frontend {
             <p class="psp-form-intro">Vul je naam, e-mail en beschikbaarheid in. Zodra je wordt ingepland ontvang je een bevestigingsmail.</p>
             <?php endif; ?>
 
-            <?php if ( $overzicht ): ?>
+            <?php if ( $overzicht || $niet_weken ): ?>
             <div class="psp-eigen-overzicht" style="background:#f8f9fa;border:1px solid #e3e6e8;border-radius:8px;padding:14px 18px;margin:0 0 24px">
                 <strong style="display:block;margin-bottom:8px">&#128197; Jouw doorgegeven beschikbaarheid</strong>
+                <?php foreach ( $niet_weken as $week_start => $_ ): ?>
+                <div style="margin-bottom:10px">
+                    <div style="font-size:.8rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">
+                        Week <?php echo esc_html( date('W', strtotime($week_start)) ); ?>
+                        &mdash; <?php echo esc_html( date_i18n('j M', strtotime($week_start)) ); ?> t/m <?php echo esc_html( date_i18n('j M', strtotime($week_start . ' +6 days')) ); ?>
+                    </div>
+                    <span style="display:inline-block;background:#fff;border:1px solid #e0b4b4;border-radius:6px;padding:4px 10px;font-size:.85rem">&#127958; Niet beschikbaar</span>
+                </div>
+                <?php endforeach; ?>
                 <?php foreach ( $overzicht as $week_start => $items ): ?>
                 <div style="margin-bottom:10px">
                     <div style="font-size:.8rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">
@@ -217,6 +227,13 @@ class PSP_Frontend {
                             <option value="<?php echo esc_attr($val); ?>"><?php echo esc_html($label); ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+
+                <div class="psp-field" style="background:#fff8f0;border:1px solid #f1d9b5;border-radius:8px;padding:10px 14px">
+                    <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600">
+                        <input type="checkbox" id="psp-niet-beschikbaar" name="niet_beschikbaar" value="1" style="width:18px;height:18px;accent-color:#d31775">
+                        <span>&#127958; Ik ben deze hele week niet beschikbaar (bijv. vakantie)</span>
+                    </label>
                 </div>
 
                 <div class="psp-field">
@@ -274,6 +291,9 @@ class PSP_Frontend {
         </div>
         <?php if ( $locked_data ): ?>
         <script>window.pspLockedData = <?php echo wp_json_encode( $locked_data ); ?>;</script>
+        <?php endif; ?>
+        <?php if ( $niet_weken ): ?>
+        <script>window.pspNietData = <?php echo wp_json_encode( $niet_weken ); ?>;</script>
         <?php endif; ?>
         <?php if ( $eigen_data ): ?>
         <script>window.pspEigenData = <?php echo wp_json_encode( $eigen_data ); ?>;</script>
@@ -474,8 +494,11 @@ class PSP_Frontend {
             }
         }
 
-        if (!$heeft_dag) {
-            wp_send_json_error(['message' => 'Vink minimaal één beschikbare dag aan.']);
+        $niet_beschikbaar = ! empty($_POST['niet_beschikbaar']);
+        if ( $niet_beschikbaar ) {
+            $dagen = [];   // hele week niet beschikbaar (bijv. vakantie)
+        } elseif (!$heeft_dag) {
+            wp_send_json_error(['message' => 'Vink minimaal één beschikbare dag aan, of kies "Ik ben deze week niet beschikbaar".']);
         }
 
         /* ── Wijzigingen op dagen die al ingepland zijn, of binnen 24 uur vallen, worden genegeerd ── */
@@ -496,13 +519,13 @@ class PSP_Frontend {
             if ($locked) {
                 // Niet meer aanpasbaar: behoud de eerder opgeslagen waarde voor deze dag (indien aanwezig)
                 if ( isset($oude_dagen[$dag]) ) $finale_dagen[$dag] = $oude_dagen[$dag];
-                if ( isset($dagen[$dag]) )      $geblokkeerd[] = $dag;
+                if ( isset($dagen[$dag]) || ( $niet_beschikbaar && isset($oude_dagen[$dag]) ) ) $geblokkeerd[] = $dag;
             } elseif ( isset($dagen[$dag]) ) {
                 $finale_dagen[$dag] = $dagen[$dag];
             }
         }
 
-        if ( empty($finale_dagen) ) {
+        if ( empty($finale_dagen) && ! $niet_beschikbaar ) {
             wp_send_json_error(['message' => 'Deze dag(en) zijn al ingepland of vallen binnen 24 uur en kunnen niet meer worden aangepast.']);
         }
 
@@ -549,7 +572,7 @@ class PSP_Frontend {
         $record = PSP_DB::get_beschikbaarheid_by_id($id);
         if ($record) PSP_Mail::stuur_bevestiging_aan_student($record);
 
-        $bericht = 'Beschikbaarheid ontvangen!';
+        $bericht = $niet_beschikbaar ? 'Doorgegeven: je bent deze week niet beschikbaar.' : 'Beschikbaarheid ontvangen!';
         if ( ! empty($geblokkeerd) ) {
             $dag_labels = ['ma'=>'maandag','di'=>'dinsdag','wo'=>'woensdag','do'=>'donderdag','vr'=>'vrijdag','za'=>'zaterdag','zo'=>'zondag'];
             $namen = array_map(function($d) use ($dag_labels) { return $dag_labels[$d]; }, $geblokkeerd);

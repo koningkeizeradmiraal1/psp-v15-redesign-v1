@@ -77,8 +77,37 @@
       });
     }
 
-    applyLockedDays();
-    weekSelect.addEventListener('change', applyLockedDays);
+    var nietCb = document.getElementById('psp-niet-beschikbaar');
+
+    // "Niet beschikbaar" aan: alle nog aanpasbare dagen uitschakelen
+    function applyNiet() {
+      if (!nietCb || !nietCb.checked) return;
+      var data = (window.pspLockedData && window.pspLockedData[weekSelect.value]) || {};
+      document.querySelectorAll('.psp-dag-row').forEach(function (row) {
+        if (Object.prototype.hasOwnProperty.call(data, row.dataset.dag)) return; // vergrendeld: blijft staan
+        var cb = row.querySelector('.psp-dag-checkbox');
+        cb.checked = false; cb.disabled = true;
+        row.querySelectorAll('.psp-time').forEach(function (i) { i.disabled = true; });
+        row.classList.remove('psp-dag-actief');
+        row.style.opacity = '.5';
+      });
+    }
+
+    function volledig() {
+      document.querySelectorAll('.psp-dag-row').forEach(function (r) { r.style.opacity = ''; });
+      if (nietCb) nietCb.checked = !!(window.pspNietData && window.pspNietData[weekSelect.value]);
+      applyLockedDays();
+      applyNiet();
+    }
+
+    if (nietCb) nietCb.addEventListener('change', function () {
+      document.querySelectorAll('.psp-dag-row').forEach(function (r) { r.style.opacity = ''; });
+      applyLockedDays();
+      applyNiet();
+    });
+
+    volledig();
+    weekSelect.addEventListener('change', volledig);
   }
 
   /* ── Datum bij elke dag (bijv. "Maandag 2 nov") op basis van de gekozen week ── */
