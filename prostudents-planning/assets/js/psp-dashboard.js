@@ -657,6 +657,41 @@
 
     var opslaanBtn = document.getElementById('psp-besch-opslaan-btn');
     if (opslaanBtn) opslaanBtn.addEventListener('click', saveBeschikbaarheid);
+
+    // Andere week of andere student gekozen: bestaande beschikbaarheid ophalen (voorkomt dubbele regels)
+    var weekInp = document.getElementById('psp-besch-week');
+    if (weekInp) weekInp.addEventListener('change', laadBeschikbaarheidInModal);
+    if (sel) sel.addEventListener('change', function () { if (sel.value && sel.value !== '__handmatig__') laadBeschikbaarheidInModal(); });
+  }
+
+  /** Haalt de bestaande beschikbaarheid van de gekozen student + week op en vult de dagen in. */
+  function laadBeschikbaarheidInModal() {
+    var selVal = document.getElementById('psp-besch-student-select').value;
+    var email  = (selVal && selVal !== '__handmatig__') ? selVal : document.getElementById('psp-besch-email').value.trim();
+    var week   = document.getElementById('psp-besch-week').value;
+    if (!email || !week) return;
+    ajax('psp_get_besch_student_week', { email: email, week_start: week }, function (res) {
+      document.getElementById('psp-besch-week').value = res.week_start;
+      document.getElementById('psp-besch-id').value   = res.id || 0;
+      document.getElementById('psp-besch-telefoon').value = res.telefoon || '';
+      document.getElementById('psp-besch-voorkeur').value = res.voorkeur || '';
+      DAG_KEYS.forEach(function (dk) {
+        var cb  = document.querySelector('.psp-besch-dag-check[data-dag="' + dk + '"]');
+        var van = document.querySelector('.psp-besch-van[data-dag="' + dk + '"]');
+        var tot = document.querySelector('.psp-besch-tot[data-dag="' + dk + '"]');
+        if (!cb) return;
+        var dag = (res.dagen && !Array.isArray(res.dagen)) ? res.dagen[dk] : null;
+        cb.checked = !!dag;
+        if (van) { van.value = dag ? dag.van : '08:00'; van.disabled = !dag; van.style.opacity = dag ? '1' : '.4'; }
+        if (tot) { tot.value = dag ? dag.tot : '17:00'; tot.disabled = !dag; tot.style.opacity = dag ? '1' : '.4'; }
+      });
+    });
+  }
+
+  /** Vanuit Beheer → Student accounts: beschikbaarheid van één uitzendkracht aanpassen (week = de week van het dashboard). */
+  function openBeschikbaarheidVoorStudent(email, naam) {
+    openBeschikbaarheidModal({ id: 0, naam: naam, email: email, week_start: fmt(state.week), telefoon: '', voorkeur: '', dagen: {} });
+    laadBeschikbaarheidInModal();
   }
 
   function openBeschikbaarheidModal(student) {
@@ -1143,6 +1178,7 @@
           + '</td>'
           + '<td class="psp-vaard-badges-cel">' + vaardBadges(s.vaardigheden) + '</td>'
           + '<td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap">'
+          + '<button class="psp-btn-sm psp-btn-ghost psp-besch-beheer-btn" data-email="' + esc(s.email) + '" data-naam="' + esc(s.naam) + '">&#128197; Beschikbaarheid</button>'
           + '<button class="psp-btn-sm psp-btn-ghost psp-inst-btn" data-email="' + esc(s.email) + '" data-naam="' + esc(s.naam) + '" data-actief="' + (s.actief === false ? '0' : '1') + '" data-geblokkeerd=\'' + JSON.stringify(s.geblokkeerd || []).replace(/'/g, "&#39;") + '\'>&#9881; Instellingen</button>'
           + ( s.has_account
               ? '<button class="psp-btn-sm psp-btn-ghost psp-edit-vaard-btn" '
@@ -1192,6 +1228,11 @@
             btn.disabled = false; btn.textContent = 'Account aanmaken';
           });
         });
+      });
+
+      // Beschikbaarheid aanpassen door medewerker
+      el.querySelectorAll('.psp-besch-beheer-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () { openBeschikbaarheidVoorStudent(btn.dataset.email, btn.dataset.naam); });
       });
 
       // Instellingen (non-actief / geblokkeerde opdrachtgevers)

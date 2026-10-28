@@ -13,6 +13,7 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_delete_beschikbaarheid',        [self::class, 'ajax_delete_beschikbaarheid']);
         add_action('wp_ajax_psp_save_beschikbaarheid_admin',    [self::class, 'ajax_save_beschikbaarheid_admin']);
         add_action('wp_ajax_psp_get_aanmeldingen',              [self::class, 'ajax_get_aanmeldingen']);
+        add_action('wp_ajax_psp_get_besch_student_week',    [self::class, 'ajax_get_besch_student_week']);
         add_action('wp_ajax_psp_verberg_student',           [self::class, 'ajax_verberg_student']);
         add_action('wp_ajax_psp_save_student_instellingen', [self::class, 'ajax_save_student_instellingen']);
         add_action('wp_ajax_psp_goedkeur_aanmelding',           [self::class, 'ajax_goedkeur_aanmelding']);
@@ -183,8 +184,9 @@ class PSP_Dashboard {
 
         <div class="psp-field">
           <label>Beschikbaarheid per dag</label>
+          <p style="margin:0 0 6px;font-size:.78rem;color:#888">Geen enkele dag aanvinken = niet beschikbaar in deze week (bijv. vakantie). Medewerkers kunnen ook dagen aanpassen waarop iemand al is ingepland.</p>
           <div id="psp-besch-dagen-wrap">
-            <?php foreach ( ['ma'=>'Maandag','di'=>'Dinsdag','wo'=>'Woensdag','do'=>'Donderdag','vr'=>'Vrijdag','za'=>'Zaterdag'] as $dk => $label ): ?>
+            <?php foreach ( ['ma'=>'Maandag','di'=>'Dinsdag','wo'=>'Woensdag','do'=>'Donderdag','vr'=>'Vrijdag','za'=>'Zaterdag','zo'=>'Zondag'] as $dk => $label ): ?>
             <div class="psp-besch-dag-rij" style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f5f5;">
               <label style="display:flex;align-items:center;gap:6px;min-width:110px;font-size:.88rem;font-weight:600;cursor:pointer">
                 <input type="checkbox" class="psp-besch-dag-check" data-dag="<?php echo $dk; ?>" style="accent-color:#d31775;width:16px;height:16px">
@@ -719,6 +721,25 @@ class PSP_Dashboard {
         wp_send_json_success( array( 'message' => 'Dienst verwijderd.' ) );
     }
 
+    /* ─────────────── AJAX: bestaande beschikbaarheid van een student in een week ─────────────── */
+    public static function ajax_get_besch_student_week() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+        $email = sanitize_email( $_POST['email'] ?? '' );
+        $week  = sanitize_text_field( $_POST['week_start'] ?? '' );
+        if ( ! $email || ! $week ) wp_send_json_error( array( 'message' => 'E-mail en week zijn verplicht.' ) );
+        $week = PSP_DB::week_start_for_datum( $week );
+        $rij  = PSP_DB::get_beschikbaarheid_by_email_week( $email, $week );
+        wp_send_json_success( array(
+            'week_start' => $week,
+            'bestaat'    => (bool) $rij,
+            'id'         => $rij ? (int) $rij->id : 0,
+            'telefoon'   => $rij ? $rij->telefoon : '',
+            'voorkeur'   => $rij ? $rij->voorkeur : '',
+            'dagen'      => $rij ? ( json_decode( $rij->dagen, true ) ?: new stdClass() ) : new stdClass(),
+        ) );
+    }
+
     /* ─────────────── AJAX: beschikbaarheid opslaan door medewerker ─────────────── */
     public static function ajax_save_beschikbaarheid_admin() {
         check_ajax_referer('psp_dashboard', 'nonce');
@@ -734,6 +755,12 @@ class PSP_Dashboard {
 
         if ( ! $naam || ! $email || ! $week_start ) {
             wp_send_json_error( array( 'message' => 'Naam, e-mail en week zijn verplicht.' ) );
+        }
+        $week_start = PSP_DB::week_start_for_datum( $week_start ); // altijd de maandag van die week
+        if ( $id <= 0 ) {
+            // Bestaat er al een rij voor deze student + week? Pas die aan i.p.v. een dubbele aan te maken
+            $bestaand = PSP_DB::get_beschikbaarheid_by_email_week( $email, $week_start );
+            if ( $bestaand ) $id = (int) $bestaand->id;
         }
 
         $dagen = json_decode( wp_unslash( $dagen_raw ), true ) ?: array();
