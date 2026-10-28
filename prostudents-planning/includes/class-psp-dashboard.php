@@ -1052,7 +1052,13 @@ class PSP_Dashboard {
         $og = sanitize_text_field( $_POST['og'] ?? '' );
         wp_send_json_success( array(
             'rows' => PSP_DB::get_wb_templates( $og ),
-            'ogs'  => PSP_DB::get_wb_ogs(),
+            // Alle opdrachtgevers (ook die nog geen template hebben) + opdrachtgevers die alleen in templates voorkomen
+            'ogs'  => (function () {
+                $namen = array_merge( (array) PSP_DB::get_opdrachtgever_namen(), (array) PSP_DB::get_wb_ogs() );
+                $namen = array_values( array_unique( array_filter( array_map( 'trim', $namen ) ) ) );
+                natcasesort( $namen );
+                return array_values( $namen );
+            })(),
         ) );
     }
 

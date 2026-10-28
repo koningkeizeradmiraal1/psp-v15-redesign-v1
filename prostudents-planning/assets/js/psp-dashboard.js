@@ -1496,17 +1496,19 @@
       }
 
       var rows = data.rows || [];
-      if (!rows.length) {
-        el.innerHTML = '<p class="psp-empty-msg">Geen templates gevonden. Klik op "+ Nieuwe template" om er een aan te maken.</p>';
+      var alleOgs = Array.isArray(data.ogs) ? data.ogs : [];
+      if (!rows.length && !alleOgs.length) {
+        el.innerHTML = '<p class="psp-empty-msg">Geen opdrachtgevers of templates gevonden. Voeg eerst een opdrachtgever toe, of klik op "+ Nieuwe template".</p>';
         return;
       }
 
-      // Groepeer per opdrachtgever
+      // Groepeer per opdrachtgever — ook opdrachtgevers zonder template tonen (met knop om er een te maken)
       var groepen = {};
+      alleOgs.forEach(function (n) { if (!og || n === og) groepen[n] = []; });
       rows.forEach(function (r) {
-        var og = r.opdrachtgever || '(geen)';
-        if (!groepen[og]) groepen[og] = [];
-        groepen[og].push(r);
+        var o = r.opdrachtgever || '(geen)';
+        if (!groepen[o]) groepen[o] = [];
+        groepen[o].push(r);
       });
 
       var html = '';
@@ -1514,6 +1516,11 @@
         html += '<div class="psp-wb-groep">';
         html += '<h4 class="psp-wb-groep-titel">' + esc(og) + '</h4>';
         html += '<div class="psp-wb-kaarten">';
+        if (!groepen[og].length) {
+          html += '<div class="psp-wb-kaart" style="border-style:dashed;text-align:center">'
+            + '<div style="color:#888;font-size:.85rem;margin-bottom:8px">Nog geen werkbevestiging-template</div>'
+            + '<button type="button" class="psp-btn-primary psp-btn-sm psp-wb-nieuw-og-btn" data-og="' + esc(og) + '">+ Template maken</button></div>';
+        }
         groepen[og].forEach(function (r) {
           var preview = (r.inhoud || '').replace(/<[^>]+>/g, '').substring(0, 120);
           if ((r.inhoud || '').length > 120) preview += '…';
@@ -1529,6 +1536,14 @@
         html += '</div></div>';
       });
       el.innerHTML = html;
+
+      // Template maken voor een opdrachtgever zonder template (opdrachtgever alvast ingevuld)
+      el.querySelectorAll('.psp-wb-nieuw-og-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openWbModal(null);
+          document.getElementById('psp-wb-opdrachtgever').value = btn.dataset.og;
+        });
+      });
 
       // Bewerkknopjes
       el.querySelectorAll('.psp-wb-edit-btn').forEach(function (btn) {
