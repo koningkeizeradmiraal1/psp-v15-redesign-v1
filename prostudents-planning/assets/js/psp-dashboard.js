@@ -194,9 +194,9 @@
     }
   }
 
-  /* ProStudents = paars, ProATTENT = blauw */
+  /* ProStudents = huiskleur roze (logo/knoppen), ProATTENT = blauw */
   var ONDERDEEL = {
-    prostudents: { naam: 'ProStudents', kleur: '#7c3aed', licht: '#ede9fe' },
+    prostudents: { naam: 'ProStudents', kleur: '#d31775', licht: '#fce8f2' },
     proattent:   { naam: 'ProATTENT',   kleur: '#2563eb', licht: '#dbeafe' }
   };
   function ondInfo(o) { return ONDERDEEL[o] || ONDERDEEL.prostudents; }
