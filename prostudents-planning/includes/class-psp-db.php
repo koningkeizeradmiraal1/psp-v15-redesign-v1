@@ -665,6 +665,40 @@ class PSP_DB {
         return false;
     }
 
+    /* ══════ Bedrijfsonderdeel per opdrachtgever (ProStudents / ProATTENT) ══════
+       Opgeslagen in één WP-option (geen tabelwijziging): [ 'klantnaam (lowercase)' => 'prostudents'|'proattent' ].
+       Klanten zonder label vallen onder ProStudents (standaard). */
+
+    public static function onderdelen() {
+        return array( 'prostudents' => 'ProStudents', 'proattent' => 'ProATTENT' );
+    }
+
+    public static function get_og_onderdeel( $naam ) {
+        $map = get_option( 'psp_og_onderdeel', array() );
+        $key = strtolower( trim( (string) $naam ) );
+        $o   = ( is_array($map) && isset($map[$key]) ) ? $map[$key] : 'prostudents';
+        return isset( self::onderdelen()[$o] ) ? $o : 'prostudents';
+    }
+
+    public static function set_og_onderdeel( $naam, $onderdeel ) {
+        $map = get_option( 'psp_og_onderdeel', array() );
+        if ( ! is_array($map) ) $map = array();
+        $key = strtolower( trim( (string) $naam ) );
+        if ( ! $key ) return;
+        $map[$key] = isset( self::onderdelen()[$onderdeel] ) ? $onderdeel : 'prostudents';
+        update_option( 'psp_og_onderdeel', $map, false );
+    }
+
+    /** Label meeverhuizen als een opdrachtgever van naam verandert. */
+    public static function verplaats_og_onderdeel( $oud, $nieuw ) {
+        $map = get_option( 'psp_og_onderdeel', array() );
+        $ko = strtolower( trim( (string) $oud ) ); $kn = strtolower( trim( (string) $nieuw ) );
+        if ( is_array($map) && $ko && $kn && $ko !== $kn && isset($map[$ko]) ) {
+            $map[$kn] = $map[$ko]; unset( $map[$ko] );
+            update_option( 'psp_og_onderdeel', $map, false );
+        }
+    }
+
     public static function get_opdrachtgever_namen() {
         global $wpdb;
         return $wpdb->get_col(

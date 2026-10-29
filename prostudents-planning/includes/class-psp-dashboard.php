@@ -88,6 +88,12 @@ class PSP_Dashboard {
 
   <!-- Filter bar -->
   <div class="psp-filter-bar">
+    <label class="psp-filter-label">Onderdeel:</label>
+    <select id="psp-filter-onderdeel" class="psp-filter-select">
+      <option value="">— Beide —</option>
+      <option value="prostudents">ProStudents</option>
+      <option value="proattent">ProATTENT</option>
+    </select>
     <label class="psp-filter-label">Opdrachtgever:</label>
     <select id="psp-filter-opdrachtgever" class="psp-filter-select">
       <option value="">— Alle —</option>
@@ -315,6 +321,19 @@ class PSP_Dashboard {
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap">
           <p style="color:#666;font-size:.87rem;margin:0">Ingeplande uren op basis van diensten met een koppeling.</p>
           <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <label style="font-size:.85rem;color:#555">Onderdeel:</label>
+            <select id="psp-rap-onderdeel" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem">
+              <option value="">Beide</option>
+              <option value="prostudents">ProStudents</option>
+              <option value="proattent">ProATTENT</option>
+            </select>
+            <label style="font-size:.85rem;color:#555">Maand:</label>
+            <select id="psp-rap-maand" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem">
+              <option value="0">Hele jaar</option>
+              <?php foreach ( array('januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december') as $mi => $mn ): ?>
+              <option value="<?php echo $mi + 1; ?>"><?php echo $mn; ?></option>
+              <?php endforeach; ?>
+            </select>
             <label style="font-size:.85rem;color:#555">Jaar:</label>
             <select id="psp-rap-jaar" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem">
               <?php
@@ -479,6 +498,13 @@ class PSP_Dashboard {
           </div>
         </div>
         <div class="psp-field">
+          <label>Bedrijfsonderdeel *</label>
+          <select name="onderdeel" id="psp-og-onderdeel" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;max-width:260px">
+            <option value="prostudents">ProStudents</option>
+            <option value="proattent">ProATTENT</option>
+          </select>
+        </div>
+        <div class="psp-field">
           <label>Adres</label>
           <input type="text" name="adres" id="psp-og-adres" placeholder="Straat 1, 1234 AB Stad">
         </div>
@@ -588,6 +614,7 @@ class PSP_Dashboard {
       <input type="hidden" id="psp-wbs-dienst-id" value="">
       <input type="hidden" id="psp-wbs-student-email" value="">
       <input type="hidden" id="psp-wbs-opdrachtgever" value="">
+      <div id="psp-wbs-onderdeel" style="margin-bottom:10px"></div>
       <div id="psp-wbs-template-keuze" style="margin-bottom:14px;display:none">
         <label style="font-size:.85rem;font-weight:600;color:#444;display:block;margin-bottom:6px">Template kiezen:</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="psp-wbs-template-btns"></div>
@@ -643,6 +670,7 @@ class PSP_Dashboard {
                 'type_werk'     => $d->type_werk,
                 'omschrijving'  => $d->omschrijving,
                 'status'        => $d->status,
+                'onderdeel'     => PSP_DB::get_og_onderdeel( $d->opdrachtgever ),
                 'koppeling'     => $kop ? array(
                     'id'                  => (int) $kop->id,
                     'beschikbaarheid_id'  => (int) $kop->beschikbaarheid_id,
@@ -1166,6 +1194,7 @@ class PSP_Dashboard {
             'templates' => $templates,
             'bestaande' => $bestaande_data,
             'dienst'    => $dienst_ctx,
+            'onderdeel' => PSP_DB::get_og_onderdeel( $og ),
         ) );
     }
 
@@ -1282,48 +1311,52 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        $van = sanitize_text_field( $_POST['van'] ?? date('Y-m-01') );
-        $tot = sanitize_text_field( $_POST['tot'] ?? date('Y-m-t') );
+        $jaar      = (int) ( $_POST['jaar'] ?? date('Y') );
+        $maand     = (int) ( $_POST['maand'] ?? 0 );
+        $onderdeel = sanitize_key( $_POST['onderdeel'] ?? '' );
+        if ( $jaar < 2000 || $jaar > 2100 ) $jaar = (int) date('Y');
+        if ( $maand >= 1 && $maand <= 12 ) {
+            $van = sprintf( '%04d-%02d-01', $jaar, $maand );
+            $tot = date( 'Y-m-t', strtotime( $van ) );
+        } else {
+            $van = $jaar . '-01-01';
+            $tot = $jaar . '-12-31';
+        }
 
         global $wpdb;
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT b.naam, b.email, d.opdrachtgever, d.datum,
-                    d.tijdstip_van, d.tijdstip_tot, d.type_werk
+            "SELECT b.naam, b.email, d.opdrachtgever, d.datum, d.tijdstip_van, d.tijdstip_tot
              FROM " . PSP_TABLE_KOPPELINGEN   . " k
              JOIN " . PSP_TABLE_DIENSTEN       . " d ON d.id = k.dienst_id
              JOIN " . PSP_TABLE_BESCHIKBAARHEID . " b ON b.id = k.beschikbaarheid_id
              WHERE d.datum BETWEEN %s AND %s
-             ORDER BY b.naam ASC, d.datum ASC",
+             ORDER BY b.naam ASC, d.opdrachtgever ASC, d.datum ASC",
             $van, $tot
         ) );
 
-        $per_student = array();
+        // Per student + opdrachtgever optellen (het onderdeel volgt de opdrachtgever)
+        $uit = array();
         foreach ( $rows as $r ) {
-            $key = $r->email;
-            if ( ! isset($per_student[$key]) ) {
-                $per_student[$key] = array(
-                    'naam'          => $r->naam,
-                    'email'         => $r->email,
-                    'totaal_uren'   => 0,
-                    'diensten'      => array(),
+            $o = PSP_DB::get_og_onderdeel( $r->opdrachtgever );
+            if ( $onderdeel && $o !== $onderdeel ) continue;
+            $key = strtolower( $r->email ) . '|' . strtolower( $r->opdrachtgever );
+            if ( ! isset( $uit[$key] ) ) {
+                $uit[$key] = array(
+                    'student_naam'    => $r->naam,
+                    'student_email'   => $r->email,
+                    'opdrachtgever'   => $r->opdrachtgever,
+                    'onderdeel'       => $o,
+                    'aantal_diensten' => 0,
+                    'uren'            => 0,
                 );
             }
-            // Bereken uren
             $van_ts = strtotime( $r->datum . ' ' . $r->tijdstip_van );
             $tot_ts = strtotime( $r->datum . ' ' . $r->tijdstip_tot );
             if ( $tot_ts <= $van_ts ) $tot_ts += DAY_IN_SECONDS; // nachtdienst over middernacht
-            $uren   = round( ( $tot_ts - $van_ts ) / 3600, 2 );
-            $per_student[$key]['totaal_uren'] += $uren;
-            $per_student[$key]['diensten'][]   = array(
-                'datum'         => $r->datum,
-                'opdrachtgever' => $r->opdrachtgever,
-                'van'           => substr( $r->tijdstip_van, 0, 5 ),
-                'tot'           => substr( $r->tijdstip_tot, 0, 5 ),
-                'uren'          => $uren,
-                'type_werk'     => $r->type_werk,
-            );
+            $uit[$key]['aantal_diensten']++;
+            $uit[$key]['uren'] = round( $uit[$key]['uren'] + ( $tot_ts - $van_ts ) / 3600, 2 );
         }
-        wp_send_json_success( array_values( $per_student ) );
+        wp_send_json_success( array_values( $uit ) );
     }
 
     /* ─────────────── AJAX: welkomstmail sturen ─────────────── */
@@ -1393,7 +1426,10 @@ class PSP_Dashboard {
     public static function ajax_get_opdrachtgevers() {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
-        wp_send_json_success( PSP_DB::get_opdrachtgevers() );
+        $rows = PSP_DB::get_opdrachtgevers();
+        foreach ( $rows as &$r ) { $r['onderdeel'] = PSP_DB::get_og_onderdeel( $r['naam'] ); }
+        unset( $r );
+        wp_send_json_success( $rows );
     }
 
     /* ─────────────── AJAX: opdrachtgever opslaan ─────────────── */
@@ -1412,8 +1448,16 @@ class PSP_Dashboard {
         );
         if ( ! $data['naam'] ) wp_send_json_error( array( 'message' => 'Naam is verplicht.' ) );
         if ( $id ) $data['id'] = $id;
+        $oude_naam = '';
+        if ( $id ) {
+            foreach ( PSP_DB::get_opdrachtgevers() as $oud ) { if ( (int) $oud['id'] === $id ) { $oude_naam = $oud['naam']; break; } }
+        }
         $ok = PSP_DB::save_opdrachtgever( $data );
         if ( $ok === false ) wp_send_json_error( array( 'message' => 'Opslaan mislukt.' ) );
+        if ( $oude_naam ) PSP_DB::verplaats_og_onderdeel( $oude_naam, $data['naam'] );
+        if ( isset( $_POST['onderdeel'] ) ) {
+            PSP_DB::set_og_onderdeel( $data['naam'], sanitize_key( $_POST['onderdeel'] ) );
+        }
         wp_send_json_success( array( 'message' => "✓ Opgeslagen.", 'lijst' => PSP_DB::get_opdrachtgevers() ) );
     }
 

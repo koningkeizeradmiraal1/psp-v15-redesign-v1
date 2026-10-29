@@ -28,6 +28,7 @@
     data:                { beschikbaarheid: [], diensten: [] },
     selectedDienst:      null,
     filterOpdrachtgever: '',
+    filterOnderdeel: '',
     filterVaardigheid:   '',
     // Inplannen-tab selecties
     ipDienst:  null,
@@ -130,8 +131,12 @@
   function initFilter() {
     function updateClearBtn() {
       document.getElementById('psp-filter-clear').style.display =
-        (state.filterOpdrachtgever || state.filterVaardigheid) ? '' : 'none';
+        (state.filterOpdrachtgever || state.filterVaardigheid || state.filterOnderdeel) ? '' : 'none';
     }
+    var ondSel = document.getElementById('psp-filter-onderdeel');
+    if (ondSel) ondSel.addEventListener('change', function () {
+      state.filterOnderdeel = this.value; updateClearBtn(); updateFilterDropdown(); applyFilter();
+    });
     document.getElementById('psp-filter-opdrachtgever').addEventListener('change', function () {
       state.filterOpdrachtgever = this.value; updateClearBtn(); applyFilter();
     });
@@ -139,7 +144,8 @@
       state.filterVaardigheid = this.value; updateClearBtn(); applyFilter();
     });
     document.getElementById('psp-filter-clear').addEventListener('click', function () {
-      state.filterOpdrachtgever = ''; state.filterVaardigheid = '';
+      state.filterOpdrachtgever = ''; state.filterVaardigheid = ''; state.filterOnderdeel = '';
+      var ondSel2 = document.getElementById('psp-filter-onderdeel'); if (ondSel2) ondSel2.value = '';
       document.getElementById('psp-filter-opdrachtgever').value = '';
       document.getElementById('psp-filter-vaardigheid').value   = '';
       this.style.display = 'none';
@@ -152,7 +158,10 @@
     var sel = document.getElementById('psp-filter-opdrachtgever');
     var cur = sel.value;
     var names = [];
-    state.data.diensten.forEach(function (d) { if (names.indexOf(d.opdrachtgever) === -1) names.push(d.opdrachtgever); });
+    state.data.diensten.forEach(function (d) {
+      if (state.filterOnderdeel && d.onderdeel !== state.filterOnderdeel) return;
+      if (names.indexOf(d.opdrachtgever) === -1) names.push(d.opdrachtgever);
+    });
     names.sort();
     sel.innerHTML = '<option value="">— Alle —</option>' +
       names.map(function (n) { return '<option value="' + esc(n) + '"' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
@@ -160,15 +169,16 @@
   }
 
   function applyFilter() {
-    var og = state.filterOpdrachtgever, vf = state.filterVaardigheid;
-    var fd = og ? state.data.diensten.filter(function (d) { return d.opdrachtgever === og; }) : state.data.diensten;
+    var og = state.filterOpdrachtgever, vf = state.filterVaardigheid, ond = state.filterOnderdeel;
+    var basis = ond ? state.data.diensten.filter(function (d) { return d.onderdeel === ond; }) : state.data.diensten;
+    var fd = og ? basis.filter(function (d) { return d.opdrachtgever === og; }) : basis;
     var resultEl = document.getElementById('psp-filter-result');
-    if (og || vf) {
+    if (og || vf || ond) {
       var open = fd.filter(function (d) { return !isIngepland(d); }).length;
       resultEl.textContent = fd.length + ' dienst(en) — ' + open + ' open, ' + (fd.length - open) + ' ingepland';
     } else { resultEl.textContent = ''; }
     var fs = state.data.beschikbaarheid;
-    if (og) {
+    if (og || ond) {
       var rd = {};
       fd.forEach(function (d) { var dk = dagKey(d.datum); if (dk) rd[dk] = true; });
       fs = fs.filter(function (s) { return Object.keys(rd).some(function (dk) { return !!s.dagen[dk]; }); });
@@ -182,6 +192,18 @@
       if (at.dataset.tab === 'studenten') renderStudentenTabel(fs);
       if (at.dataset.tab === 'inplannen') renderInplannenView(fd, fs);
     }
+  }
+
+  /* ProStudents = paars, ProATTENT = blauw */
+  var ONDERDEEL = {
+    prostudents: { naam: 'ProStudents', kleur: '#7c3aed', licht: '#ede9fe' },
+    proattent:   { naam: 'ProATTENT',   kleur: '#2563eb', licht: '#dbeafe' }
+  };
+  function ondInfo(o) { return ONDERDEEL[o] || ONDERDEEL.prostudents; }
+  function ondBadge(o) {
+    var i = ondInfo(o);
+    return '<span class="psp-ond-badge" style="display:inline-block;background:' + i.licht + ';color:' + i.kleur + ';border:1px solid ' + i.kleur +
+      ';border-radius:10px;padding:0 7px;font-size:.66rem;font-weight:700;line-height:1.5;white-space:nowrap">' + i.naam + '</span>';
   }
 
   function dagKey(datum) {
@@ -215,14 +237,14 @@
       groep.sort(function (a, b) { return (isIngepland(a) ? 1 : 0) - (isIngepland(b) ? 1 : 0); });
       var nOpen = groep.filter(function (d) { return !isIngepland(d); }).length;
       html += '<div class="psp-groep">';
-      html += '<div class="psp-groep-header">' + esc(og.toUpperCase());
+      html += '<div class="psp-groep-header">' + esc(og.toUpperCase()) + ' ' + ondBadge(groep[0].onderdeel);
       if (nOpen) html += ' <span class="psp-groep-open-badge">' + nOpen + ' open</span>';
       html += '</div>';
       groep.forEach(function (d) {
         var sel = (state.selectedDienst && state.selectedDienst.id === d.id) ? ' selected' : '';
-        html += '<div class="psp-dienst-card ' + (isIngepland(d) ? 'ingepland' : 'open') + sel + '" data-id="' + d.id + '">' +
+        html += '<div class="psp-dienst-card ' + (isIngepland(d) ? 'ingepland' : 'open') + sel + '" data-id="' + d.id + '" style="border-left:5px solid ' + ondInfo(d.onderdeel).kleur + '">' +
           '<button class="psp-dienst-card-edit" data-id="' + d.id + '" title="Bewerken">✏</button>' +
-          '<div class="psp-dienst-card-title">' + esc(d.titel) + '</div>' +
+          '<div class="psp-dienst-card-title">' + esc(d.titel) + ' ' + ondBadge(d.onderdeel) + '</div>' +
           '<div class="psp-dienst-card-meta">' + fmtNL(new Date(d.datum)) + ' · ' + d.tijdstip_van + '–' + d.tijdstip_tot + (d.locatie ? '<br>' + esc(d.locatie) : '') + '</div>' +
           '<span class="psp-dienst-card-badge ' + dienstBadgeCls(d) + '">' + dienstBadgeTxt(d) + '</span>' +
           (isIngepland(d) && d.koppeling ? '<div class="psp-dienst-card-student">👤 ' + esc(d.koppeling.naam) + '</div>' : '<div class="psp-open-hint">Klik om studenten te zien</div>') +
@@ -316,7 +338,7 @@
 
         html += '<td class="' + cls + '" data-student="' + s.id + '" data-datum="' + datum + '">';
         if (linked) {
-          html += '<div class="psp-assigned-dienst">' + esc(linked.opdrachtgever) + '</div>' +
+          html += '<div class="psp-assigned-dienst">' + esc(linked.opdrachtgever) + ' ' + ondBadge(linked.onderdeel) + '</div>' +
             (linked.titel ? '<div class="psp-assigned-titel" style="font-size:.7rem;font-weight:600;opacity:.85">' + esc(linked.titel) + '</div>' : '') +
             '<div class="psp-assigned-time">' + linked.tijdstip_van + '–' + linked.tijdstip_tot + '</div>' +
             '<div class="psp-cell-actions">' +
@@ -414,7 +436,7 @@
           if (kopDienstId) {
             var d = diensten.find(function (x) { return x.id === kopDienstId; });
             html += '<td class="psp-ip-cell ingepland">' +
-              '<div class="psp-ip-chip"><strong>' + esc(d.opdrachtgever) + '</strong>' + (d.titel ? '<span style="display:block;font-weight:600">' + esc(d.titel) + '</span>' : '') + d.tijdstip_van + '–' + d.tijdstip_tot +
+              '<div class="psp-ip-chip" style="border-left:4px solid ' + ondInfo(d.onderdeel).kleur + ';padding-left:6px"><strong>' + esc(d.opdrachtgever) + '</strong> ' + ondBadge(d.onderdeel) + (d.titel ? '<span style="display:block;font-weight:600">' + esc(d.titel) + '</span>' : '') + d.tijdstip_van + '–' + d.tijdstip_tot +
               '<button class="psp-ip-chip-x" data-dienst-id="' + kopDienstId + '" title="Koppeling verwijderen">✕</button></div></td>';
           } else {
             var geblok = (s.geblokkeerd || []).map(function (g) { return g.toLowerCase(); });
@@ -474,7 +496,7 @@
       });
       openLijst.innerHTML = groepenOpen.map(function (g) {
         var d = g.d;
-        return '<div class="psp-ip-open-card"><strong>' + esc(g.basis) + (g.n > 1 ? ' <span style="color:#d31775">×' + g.n + '</span>' : '') + '</strong> — ' + esc(d.opdrachtgever) +
+        return '<div class="psp-ip-open-card" style="border-left:5px solid ' + ondInfo(d.onderdeel).kleur + '"><strong>' + esc(g.basis) + (g.n > 1 ? ' <span style="color:#d31775">×' + g.n + '</span>' : '') + '</strong> — ' + esc(d.opdrachtgever) + ' ' + ondBadge(d.onderdeel) +
           '<div class="psp-ip-dienst-meta">' + fmtNL(new Date(d.datum)) + ' · ' + d.tijdstip_van + '–' + d.tijdstip_tot + (d.locatie ? ' · ' + esc(d.locatie) : '') + '</div></div>';
       }).join('');
     }
@@ -571,7 +593,7 @@
       var kop = d.koppeling;
       html += '<tr><td>' + fmtNL(new Date(d.datum)) + '</td>' +
         '<td><strong>' + esc(d.titel) + '</strong>' + (d.type_werk ? '<br><small>' + esc(d.type_werk) + '</small>' : '') + '</td>' +
-        '<td>' + esc(d.opdrachtgever) + '</td>' +
+        '<td>' + esc(d.opdrachtgever) + '<br>' + ondBadge(d.onderdeel) + '</td>' +
         '<td>' + d.tijdstip_van + '–' + d.tijdstip_tot + '</td>' +
         '<td><span class="psp-status-badge ' + dienstBadgeCls(d) + '">' + dienstBadgeTxt(d) + '</span></td>' +
         '<td>' + (kop ? '<strong>' + esc(kop.naam) + '</strong><br><small>' + esc(kop.email) + '</small>' : '<span style="color:#ccc">—</span>') + '</td>' +
@@ -1026,6 +1048,7 @@
           telefoon:       document.getElementById('psp-og-telefoon').value,
           adres:          document.getElementById('psp-og-adres').value,
           notities:       document.getElementById('psp-og-notities').value,
+          onderdeel:      document.getElementById('psp-og-onderdeel').value,
         };
         ajax('psp_save_opdrachtgever', fd, function (res) {
           toast(res.message || '✓ Opgeslagen.', 'success');
@@ -1045,13 +1068,14 @@
         return;
       }
       var html = '<table class="psp-table"><thead><tr>'
-        + '<th>Naam</th><th>Contactpersoon</th><th>E-mail</th><th>Telefoon</th><th>Acties</th>'
+        + '<th>Naam</th><th>Onderdeel</th><th>Contactpersoon</th><th>E-mail</th><th>Telefoon</th><th>Acties</th>'
         + '</tr></thead><tbody>';
       data.forEach(function (r) {
         html += '<tr>'
           + '<td><strong>' + esc(r.naam) + '</strong>'
           + (r.adres ? '<br><small style="color:#888">' + esc(r.adres) + '</small>' : '')
           + '</td>'
+          + '<td>' + ondBadge(r.onderdeel) + '</td>'
           + '<td>' + esc(r.contactpersoon || '—') + '</td>'
           + '<td>' + (r.email ? '<a href="mailto:' + esc(r.email) + '">' + esc(r.email) + '</a>' : '—') + '</td>'
           + '<td>' + esc(r.telefoon || '—') + '</td>'
@@ -1099,6 +1123,7 @@
     document.getElementById('psp-og-telefoon').value = r ? (r.telefoon || '') : '';
     document.getElementById('psp-og-adres').value    = r ? (r.adres || '') : '';
     document.getElementById('psp-og-notities').value = r ? (r.notities || '') : '';
+    document.getElementById('psp-og-onderdeel').value = r ? (r.onderdeel || 'prostudents') : 'prostudents';
     var saveBtn = document.getElementById('psp-og-opslaan-btn');
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Opslaan'; }
     modal.style.display = 'flex';
@@ -1714,6 +1739,8 @@
     ajax('psp_wb_templates_voor_og', { opdrachtgever: og, dienst_id: dienstId }, function (res) {
       var templates = Array.isArray(res.templates) ? res.templates : [];
       var bestaande = res.bestaande || null;
+      var ondEl = document.getElementById('psp-wbs-onderdeel');
+      if (ondEl) ondEl.innerHTML = '<span style="font-size:.82rem;color:#555">Bedrijfsonderdeel: </span>' + ondBadge(res.onderdeel) + '<small style="color:#888;margin-left:6px">(volgt de opdrachtgever)</small>';
       var templBtns = document.getElementById('psp-wbs-template-btns');
       var templWrap = document.getElementById('psp-wbs-template-keuze');
       var dn  = res.dienst || {};
@@ -1882,20 +1909,28 @@
   function laadUrenoverzicht() {
     var wrap = document.getElementById('psp-rapportage-wrap');
     if (!wrap) return;
-    var jaarEl = document.getElementById('psp-rap-jaar');
-    var jaar   = jaarEl ? jaarEl.value : new Date().getFullYear();
+    var jaarEl  = document.getElementById('psp-rap-jaar');
+    var maandEl = document.getElementById('psp-rap-maand');
+    var ondEl   = document.getElementById('psp-rap-onderdeel');
+    var jaar    = jaarEl ? jaarEl.value : new Date().getFullYear();
     wrap.innerHTML = '<p class="psp-empty-msg">Laden&#8230;</p>';
-    ajax('psp_urenoverzicht', { jaar: jaar }, function (data) {
+    ajax('psp_urenoverzicht', { jaar: jaar, maand: maandEl ? maandEl.value : 0, onderdeel: ondEl ? ondEl.value : '' }, function (data) {
       if (!Array.isArray(data) || !data.length) {
-        wrap.innerHTML = '<p class="psp-empty-msg">Geen gegevens gevonden voor ' + esc(String(jaar)) + '.</p>';
+        wrap.innerHTML = '<p class="psp-empty-msg">Geen ingeplande uren gevonden voor deze selectie.</p>';
         return;
       }
-      var html = '<table class="psp-table"><thead><tr>'
-        + '<th>Student</th><th>Opdrachtgever</th><th>Diensten</th><th>Uren</th>'
+      var tot = { prostudents: 0, proattent: 0 };
+      data.forEach(function (r) { tot[r.onderdeel] = (tot[r.onderdeel] || 0) + (parseFloat(r.uren) || 0); });
+      var html = '<p style="margin:0 0 12px;font-size:.88rem">'
+        + ondBadge('prostudents') + ' <strong>' + (Math.round(tot.prostudents * 100) / 100) + '</strong> uur &nbsp;&middot;&nbsp; '
+        + ondBadge('proattent') + ' <strong>' + (Math.round(tot.proattent * 100) / 100) + '</strong> uur</p>';
+      html += '<table class="psp-table"><thead><tr>'
+        + '<th>Onderdeel</th><th>Student</th><th>Opdrachtgever</th><th>Diensten</th><th>Uren</th>'
         + '</tr></thead><tbody>';
       data.forEach(function (r) {
         html += '<tr>'
-          + '<td>' + esc(r.student_email || '') + '</td>'
+          + '<td>' + ondBadge(r.onderdeel) + '</td>'
+          + '<td><strong>' + esc(r.student_naam || '') + '</strong><br><small>' + esc(r.student_email || '') + '</small></td>'
           + '<td>' + esc(r.opdrachtgever || '') + '</td>'
           + '<td style="text-align:center">' + esc(String(r.aantal_diensten || 0)) + '</td>'
           + '<td style="text-align:center"><strong>' + esc(String(r.uren || '0')) + '</strong></td>'
