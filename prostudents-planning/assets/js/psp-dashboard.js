@@ -1722,17 +1722,18 @@
                   locatie: dn.locatie || '', type_werk: dn.type_werk || '' };
 
       if (templates.length && templBtns && templWrap) {
-        templBtns.innerHTML = templates.map(function (t) {
-          return '<button type="button" class="psp-btn-sm psp-btn-ghost psp-wbs-templ-btn" data-id="' + t.id + '">' + esc(t.naam) + '</button>';
-        }).join('');
+        // Uitrolmenu i.p.v. losse knoppen (handig bij veel templates per opdrachtgever)
+        templBtns.innerHTML = '<select id="psp-wbs-template-select" style="padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:.88rem;min-width:260px;max-width:100%">'
+          + '<option value="">\u2014 Kies een template \u2014</option>'
+          + templates.map(function (t) { return '<option value="' + t.id + '">' + esc(t.naam) + '</option>'; }).join('')
+          + '</select>';
         templWrap.style.display = '';
-        templBtns.querySelectorAll('.psp-wbs-templ-btn').forEach(function (tb) {
-          tb.addEventListener('click', function () {
-            var t = templates.find(function (x) { return String(x.id) === tb.dataset.id; });
-            if (!t) return;
-            document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(t.onderwerp, ctx);
-            document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(t.inhoud, ctx);
-          });
+        var tSel = document.getElementById('psp-wbs-template-select');
+        tSel.addEventListener('change', function () {
+          var t = templates.find(function (x) { return String(x.id) === tSel.value; });
+          if (!t) return;
+          document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(t.onderwerp, ctx);
+          document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(t.inhoud, ctx);
         });
       } else if (templWrap) {
         templWrap.style.display = 'none';
@@ -1753,6 +1754,7 @@
         document.getElementById('psp-wbs-onderwerp').value = 'Werkbevestiging ' + og;
         // Is er precies één template voor deze opdrachtgever? Dan meteen dat template gebruiken, vooraf ingevuld.
         if (templates.length === 1) {
+          var tsel1 = document.getElementById('psp-wbs-template-select'); if (tsel1) tsel1.value = String(templates[0].id);
           document.getElementById('psp-wbs-onderwerp').value = replacePlaceholders(templates[0].onderwerp, ctx) || ('Werkbevestiging ' + og);
           document.getElementById('psp-wbs-inhoud').value    = replacePlaceholders(templates[0].inhoud, ctx);
         } else {

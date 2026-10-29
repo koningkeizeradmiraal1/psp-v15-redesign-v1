@@ -589,7 +589,7 @@ class PSP_Dashboard {
       <input type="hidden" id="psp-wbs-student-email" value="">
       <input type="hidden" id="psp-wbs-opdrachtgever" value="">
       <div id="psp-wbs-template-keuze" style="margin-bottom:14px;display:none">
-        <label style="font-size:.85rem;font-weight:600;color:#444;display:block;margin-bottom:6px">Template laden:</label>
+        <label style="font-size:.85rem;font-weight:600;color:#444;display:block;margin-bottom:6px">Template kiezen:</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="psp-wbs-template-btns"></div>
       </div>
       <div class="psp-field" style="margin-bottom:10px">
