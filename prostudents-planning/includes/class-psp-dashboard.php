@@ -91,8 +91,8 @@ class PSP_Dashboard {
     <label class="psp-filter-label">Onderdeel:</label>
     <select id="psp-filter-onderdeel" class="psp-filter-select">
       <option value="">— Beide —</option>
-      <option value="prostudents">ProStudents</option>
-      <option value="proattent">ProATTENT</option>
+      <option value="prostudents">Pro Students</option>
+      <option value="proattent">Pro Attent</option>
     </select>
     <label class="psp-filter-label">Opdrachtgever:</label>
     <select id="psp-filter-opdrachtgever" class="psp-filter-select">
@@ -324,8 +324,8 @@ class PSP_Dashboard {
             <label style="font-size:.85rem;color:#555">Onderdeel:</label>
             <select id="psp-rap-onderdeel" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem">
               <option value="">Beide</option>
-              <option value="prostudents">ProStudents</option>
-              <option value="proattent">ProATTENT</option>
+              <option value="prostudents">Pro Students</option>
+              <option value="proattent">Pro Attent</option>
             </select>
             <label style="font-size:.85rem;color:#555">Maand:</label>
             <select id="psp-rap-maand" style="padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem">
@@ -500,8 +500,8 @@ class PSP_Dashboard {
         <div class="psp-field">
           <label>Bedrijfsonderdeel *</label>
           <select name="onderdeel" id="psp-og-onderdeel" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;max-width:260px">
-            <option value="prostudents">ProStudents</option>
-            <option value="proattent">ProATTENT</option>
+            <option value="prostudents">Pro Students</option>
+            <option value="proattent">Pro Attent</option>
           </select>
         </div>
         <div class="psp-field">

@@ -698,7 +698,7 @@ class PSP_DB {
        Klanten zonder label vallen onder ProStudents (standaard). */
 
     public static function onderdelen() {
-        return array( 'prostudents' => 'ProStudents', 'proattent' => 'ProATTENT' );
+        return array( 'prostudents' => 'Pro Students', 'proattent' => 'Pro Attent' );
     }
 
     public static function get_og_onderdeel( $naam ) {

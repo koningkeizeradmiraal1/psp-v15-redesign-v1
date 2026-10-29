@@ -196,14 +196,15 @@
 
   /* ProStudents = huiskleur roze (logo/knoppen), ProATTENT = blauw */
   var ONDERDEEL = {
-    prostudents: { naam: 'ProStudents', kleur: '#d31775', licht: '#fce8f2' },
-    proattent:   { naam: 'ProATTENT',   kleur: '#2563eb', licht: '#dbeafe' }
+    prostudents: { naam: 'Pro Students', kort: 'PS', kleur: '#d31775', licht: '#fce8f2' },
+    proattent:   { naam: 'Pro Attent',   kort: 'PA', kleur: '#2563eb', licht: '#dbeafe' }
   };
   function ondInfo(o) { return ONDERDEEL[o] || ONDERDEEL.prostudents; }
-  function ondBadge(o) {
+  // kort = true: afkorting PS / PA (voor drukke planning-overzichten en roosters)
+  function ondBadge(o, kort) {
     var i = ondInfo(o);
     return '<span class="psp-ond-badge" style="display:inline-block;background:' + i.licht + ';color:' + i.kleur + ';border:1px solid ' + i.kleur +
-      ';border-radius:10px;padding:0 7px;font-size:.66rem;font-weight:700;line-height:1.5;white-space:nowrap">' + i.naam + '</span>';
+      ';border-radius:10px;padding:0 7px;font-size:.66rem;font-weight:700;line-height:1.5;white-space:nowrap" title="' + i.naam + '">' + (kort ? i.kort : i.naam) + '</span>';
   }
 
   function dagKey(datum) {
@@ -237,14 +238,14 @@
       groep.sort(function (a, b) { return (isIngepland(a) ? 1 : 0) - (isIngepland(b) ? 1 : 0); });
       var nOpen = groep.filter(function (d) { return !isIngepland(d); }).length;
       html += '<div class="psp-groep">';
-      html += '<div class="psp-groep-header">' + esc(og.toUpperCase()) + ' ' + ondBadge(groep[0].onderdeel);
+      html += '<div class="psp-groep-header">' + esc(og.toUpperCase()) + ' ' + ondBadge(groep[0].onderdeel, true);
       if (nOpen) html += ' <span class="psp-groep-open-badge">' + nOpen + ' open</span>';
       html += '</div>';
       groep.forEach(function (d) {
         var sel = (state.selectedDienst && state.selectedDienst.id === d.id) ? ' selected' : '';
         html += '<div class="psp-dienst-card ' + (isIngepland(d) ? 'ingepland' : 'open') + sel + '" data-id="' + d.id + '" style="border-left:5px solid ' + ondInfo(d.onderdeel).kleur + '">' +
           '<button class="psp-dienst-card-edit" data-id="' + d.id + '" title="Bewerken">✏</button>' +
-          '<div class="psp-dienst-card-title">' + esc(d.titel) + ' ' + ondBadge(d.onderdeel) + '</div>' +
+          '<div class="psp-dienst-card-title">' + esc(d.titel) + ' ' + ondBadge(d.onderdeel, true) + '</div>' +
           '<div class="psp-dienst-card-meta">' + fmtNL(new Date(d.datum)) + ' · ' + d.tijdstip_van + '–' + d.tijdstip_tot + (d.locatie ? '<br>' + esc(d.locatie) : '') + '</div>' +
           '<span class="psp-dienst-card-badge ' + dienstBadgeCls(d) + '">' + dienstBadgeTxt(d) + '</span>' +
           (isIngepland(d) && d.koppeling ? '<div class="psp-dienst-card-student">👤 ' + esc(d.koppeling.naam) + '</div>' : '<div class="psp-open-hint">Klik om studenten te zien</div>') +
@@ -338,7 +339,7 @@
 
         html += '<td class="' + cls + '" data-student="' + s.id + '" data-datum="' + datum + '">';
         if (linked) {
-          html += '<div class="psp-assigned-dienst">' + esc(linked.opdrachtgever) + ' ' + ondBadge(linked.onderdeel) + '</div>' +
+          html += '<div class="psp-assigned-dienst">' + esc(linked.opdrachtgever) + ' ' + ondBadge(linked.onderdeel, true) + '</div>' +
             (linked.titel ? '<div class="psp-assigned-titel" style="font-size:.7rem;font-weight:600;opacity:.85">' + esc(linked.titel) + '</div>' : '') +
             '<div class="psp-assigned-time">' + linked.tijdstip_van + '–' + linked.tijdstip_tot + '</div>' +
             '<div class="psp-cell-actions">' +
@@ -436,7 +437,7 @@
           if (kopDienstId) {
             var d = diensten.find(function (x) { return x.id === kopDienstId; });
             html += '<td class="psp-ip-cell ingepland">' +
-              '<div class="psp-ip-chip" style="border-left:4px solid ' + ondInfo(d.onderdeel).kleur + ';padding-left:6px"><strong>' + esc(d.opdrachtgever) + '</strong> ' + ondBadge(d.onderdeel) + (d.titel ? '<span style="display:block;font-weight:600">' + esc(d.titel) + '</span>' : '') + d.tijdstip_van + '–' + d.tijdstip_tot +
+              '<div class="psp-ip-chip" style="border-left:4px solid ' + ondInfo(d.onderdeel).kleur + ';padding-left:6px"><strong>' + esc(d.opdrachtgever) + '</strong> ' + ondBadge(d.onderdeel, true) + (d.titel ? '<span style="display:block;font-weight:600">' + esc(d.titel) + '</span>' : '') + d.tijdstip_van + '–' + d.tijdstip_tot +
               '<button class="psp-ip-chip-x" data-dienst-id="' + kopDienstId + '" title="Koppeling verwijderen">✕</button></div></td>';
           } else {
             var geblok = (s.geblokkeerd || []).map(function (g) { return g.toLowerCase(); });
@@ -496,7 +497,7 @@
       });
       openLijst.innerHTML = groepenOpen.map(function (g) {
         var d = g.d;
-        return '<div class="psp-ip-open-card" style="border-left:5px solid ' + ondInfo(d.onderdeel).kleur + '"><strong>' + esc(g.basis) + (g.n > 1 ? ' <span style="color:#d31775">×' + g.n + '</span>' : '') + '</strong> — ' + esc(d.opdrachtgever) + ' ' + ondBadge(d.onderdeel) +
+        return '<div class="psp-ip-open-card" style="border-left:5px solid ' + ondInfo(d.onderdeel).kleur + '"><strong>' + esc(g.basis) + (g.n > 1 ? ' <span style="color:#d31775">×' + g.n + '</span>' : '') + '</strong> — ' + esc(d.opdrachtgever) + ' ' + ondBadge(d.onderdeel, true) +
           '<div class="psp-ip-dienst-meta">' + fmtNL(new Date(d.datum)) + ' · ' + d.tijdstip_van + '–' + d.tijdstip_tot + (d.locatie ? ' · ' + esc(d.locatie) : '') + '</div></div>';
       }).join('');
     }
@@ -593,7 +594,7 @@
       var kop = d.koppeling;
       html += '<tr><td>' + fmtNL(new Date(d.datum)) + '</td>' +
         '<td><strong>' + esc(d.titel) + '</strong>' + (d.type_werk ? '<br><small>' + esc(d.type_werk) + '</small>' : '') + '</td>' +
-        '<td>' + esc(d.opdrachtgever) + '<br>' + ondBadge(d.onderdeel) + '</td>' +
+        '<td>' + esc(d.opdrachtgever) + '<br>' + ondBadge(d.onderdeel, true) + '</td>' +
         '<td>' + d.tijdstip_van + '–' + d.tijdstip_tot + '</td>' +
         '<td><span class="psp-status-badge ' + dienstBadgeCls(d) + '">' + dienstBadgeTxt(d) + '</span></td>' +
         '<td>' + (kop ? '<strong>' + esc(kop.naam) + '</strong><br><small>' + esc(kop.email) + '</small>' : '<span style="color:#ccc">—</span>') + '</td>' +
