@@ -315,6 +315,7 @@
         html += '<td class="' + cls + '" data-student="' + s.id + '" data-datum="' + datum + '">';
         if (linked) {
           html += '<div class="psp-assigned-dienst">' + esc(linked.opdrachtgever) + '</div>' +
+            (linked.titel ? '<div class="psp-assigned-titel" style="font-size:.7rem;font-weight:600;opacity:.85">' + esc(linked.titel) + '</div>' : '') +
             '<div class="psp-assigned-time">' + linked.tijdstip_van + '–' + linked.tijdstip_tot + '</div>' +
             '<div class="psp-cell-actions">' +
             '<button class="psp-unassign-btn" data-dienst-id="' + linked.id + '">✕</button>' +
@@ -411,7 +412,7 @@
           if (kopDienstId) {
             var d = diensten.find(function (x) { return x.id === kopDienstId; });
             html += '<td class="psp-ip-cell ingepland">' +
-              '<div class="psp-ip-chip"><strong>' + esc(d.opdrachtgever) + '</strong><br>' + d.tijdstip_van + '–' + d.tijdstip_tot +
+              '<div class="psp-ip-chip"><strong>' + esc(d.opdrachtgever) + '</strong>' + (d.titel ? '<span style="display:block;font-weight:600">' + esc(d.titel) + '</span>' : '') + d.tijdstip_van + '–' + d.tijdstip_tot +
               '<button class="psp-ip-chip-x" data-dienst-id="' + kopDienstId + '" title="Koppeling verwijderen">✕</button></div></td>';
           } else {
             var geblok = (s.geblokkeerd || []).map(function (g) { return g.toLowerCase(); });
