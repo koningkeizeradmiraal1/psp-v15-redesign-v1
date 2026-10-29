@@ -1813,11 +1813,11 @@
     var weekLabel = fmtNL(state.week) + ' t/m ' + fmtNL(addDays(state.week, 6));
     ajax('psp_wb_bevestigingen', { week_start: fmt(state.week) }, function (data) {
       if (!Array.isArray(data) || !data.length) {
-        el.innerHTML = '<p class="psp-empty-msg">Geen werkbevestigingen voor diensten in de week van ' + weekLabel + '.<br><small>Kies een andere week met de pijltjes bovenaan.</small></p>';
+        el.innerHTML = '<p class="psp-empty-msg">Geen openstaande werkbevestigingen, en geen bevestigde voor de week van ' + weekLabel + '.<br><small>Kies een andere week met de pijltjes bovenaan.</small></p>';
         return;
       }
       var open = data.filter(function (r) { return r.status !== 'bevestigd'; }).length;
-      var html = '<p style="margin:0 0 4px;font-size:.82rem;color:#777">Diensten in de week van <strong>' + weekLabel + '</strong> (kies een andere week met de pijltjes bovenaan)</p>'
+      var html = '<p style="margin:0 0 4px;font-size:.82rem;color:#777">Onbevestigde werkbevestigingen uit <strong>alle weken</strong>, plus de bevestigde voor de week van <strong>' + weekLabel + '</strong> (kies een andere week met de pijltjes bovenaan)</p>'
         + '<p style="margin:0 0 12px;font-size:.88rem"><strong>' + open + '</strong> nog niet bevestigd &middot; <strong>' + (data.length - open) + '</strong> bevestigd</p>'
         + '<table class="psp-table"><thead><tr>'
         + '<th>Student</th><th>Opdrachtgever</th><th>Dienst</th><th>Verzonden</th><th>Status</th>'

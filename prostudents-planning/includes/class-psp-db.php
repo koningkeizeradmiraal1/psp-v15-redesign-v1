@@ -502,15 +502,15 @@ class PSP_DB {
         global $wpdb;
         self::ensure_wb_tabel();
         if ( $week_start ) {
-            // Alleen diensten van de gekozen week (maandag t/m zondag)
+            // Onbevestigde werkbevestigingen: altijd (alle weken). Bevestigde: alleen diensten van de gekozen week (ma t/m zo).
             $ma = self::week_start_for_datum( $week_start );
             $zo = date( 'Y-m-d', strtotime( $ma . ' +6 days' ) );
             return $wpdb->get_results( $wpdb->prepare(
                 "SELECT wb.*, d.datum, d.tijdstip_van, d.tijdstip_tot, d.titel,
                         (SELECT b.naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " b WHERE b.email = wb.student_email ORDER BY b.id DESC LIMIT 1) AS student_naam
                  FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " wb
-                 JOIN " . PSP_TABLE_DIENSTEN . " d ON d.id = wb.dienst_id
-                 WHERE d.datum BETWEEN %s AND %s
+                 LEFT JOIN " . PSP_TABLE_DIENSTEN . " d ON d.id = wb.dienst_id
+                 WHERE wb.status <> 'bevestigd' OR d.datum BETWEEN %s AND %s
                  ORDER BY (wb.status = 'bevestigd') ASC, d.datum ASC, d.tijdstip_van ASC
                  LIMIT %d",
                 $ma, $zo, (int) $limit
