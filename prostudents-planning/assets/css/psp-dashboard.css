@@ -103,6 +103,7 @@ body.psp-fullpage { overflow: hidden; }
   letter-spacing: -.01em;
 }
 .psp-btn-icon {
+  color: #374151;
   background: #f8fafc;
   border: 1px solid var(--psp-border);
   border-radius: 8px;
@@ -238,8 +239,8 @@ body.psp-fullpage { overflow: hidden; }
 .psp-dienst-card-student { font-size: .7rem; color: var(--psp-green); font-weight: 600; margin-top: 3px; }
 .psp-dienst-card-edit {
   position: absolute; top: 6px; right: 6px;
-  font-size: .7rem; background: none; border: none;
-  cursor: pointer; color: #ddd; padding: 1px; transition: color .15s;
+  font-size: .8rem; background: none; border: none; box-shadow: none;
+  cursor: pointer; color: #6b7280; padding: 1px 3px; transition: color .15s;
 }
 .psp-dienst-card-edit:hover { color: var(--psp-pink); }
 
@@ -370,11 +371,15 @@ body.psp-fullpage { overflow: hidden; }
   border-radius: 20px; font-size: .68rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .03em;
 }
-.psp-tbl-action {
-  background: none; border: 1px solid var(--psp-border);
-  border-radius: 5px; padding: 3px 8px; font-size: .72rem; cursor: pointer;
+.psp-tbl-action,
+.psp-tbl-dup {
+  background: #fff; border: 1px solid var(--psp-border); box-shadow: none;
+  color: #374151;
+  border-radius: 5px; padding: 3px 8px; font-size: .72rem; line-height: 1.4; cursor: pointer;
   transition: all .15s;
 }
+.psp-tbl-dup { padding: 3px 7px; font-size: .8rem; }
+.psp-tbl-dup:hover { background: var(--psp-pink-lt); border-color: var(--psp-pink); color: var(--psp-pink); }
 .psp-tbl-action:hover { background: var(--psp-pink-lt); border-color: var(--psp-pink); color: var(--psp-pink); }
 .psp-tbl-del {
   background: none; border: 1px solid #e0c0c0;
