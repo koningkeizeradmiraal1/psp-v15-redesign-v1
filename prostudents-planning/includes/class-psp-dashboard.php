@@ -1240,7 +1240,8 @@ class PSP_Dashboard {
         check_ajax_referer('psp_dashboard', 'nonce');
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
-        $rows = PSP_DB::get_wb_overzicht();
+        $week = sanitize_text_field( $_POST['week_start'] ?? '' );
+        $rows = PSP_DB::get_wb_overzicht( 200, $week );
         $out  = array();
         foreach ( $rows as $r ) {
             $out[] = array(
