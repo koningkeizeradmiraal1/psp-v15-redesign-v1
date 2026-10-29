@@ -1112,10 +1112,10 @@ class PSP_Dashboard {
         if ( ! current_user_can('edit_posts') ) wp_send_json_error();
 
         $id            = (int)   ( $_POST['wb_id']        ?? 0 );
-        $opdrachtgever = sanitize_text_field( $_POST['opdrachtgever'] ?? '' );
-        $naam          = sanitize_text_field( $_POST['naam']          ?? '' );
-        $onderwerp     = sanitize_text_field( $_POST['onderwerp']     ?? '' );
-        $inhoud        = sanitize_textarea_field( $_POST['inhoud']    ?? '' );
+        $opdrachtgever = sanitize_text_field( wp_unslash( $_POST['opdrachtgever'] ?? '' ) );
+        $naam          = sanitize_text_field( wp_unslash( $_POST['naam']          ?? '' ) );
+        $onderwerp     = sanitize_text_field( wp_unslash( $_POST['onderwerp']     ?? '' ) );
+        $inhoud        = sanitize_textarea_field( wp_unslash( $_POST['inhoud']    ?? '' ) );
 
         if ( ! $opdrachtgever || ! $naam ) wp_send_json_error( array( 'message' => 'Opdrachtgever en naam zijn verplicht.' ) );
 
@@ -1206,8 +1206,8 @@ class PSP_Dashboard {
         $dienst_id     = (int)   ( $_POST['dienst_id']     ?? 0 );
         $student_email = sanitize_email( $_POST['student_email'] ?? '' );
         $opdrachtgever = sanitize_text_field( $_POST['opdrachtgever'] ?? '' );
-        $onderwerp     = sanitize_text_field( $_POST['onderwerp']     ?? '' );
-        $inhoud        = sanitize_textarea_field( $_POST['inhoud']    ?? '' );
+        $onderwerp     = sanitize_text_field( wp_unslash( $_POST['onderwerp']     ?? '' ) );
+        $inhoud        = sanitize_textarea_field( wp_unslash( $_POST['inhoud']    ?? '' ) );
 
         if ( ! $dienst_id || ! $student_email ) wp_send_json_error( array( 'message' => 'Ontbrekende gegevens.' ) );
 

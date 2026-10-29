@@ -396,18 +396,45 @@ class PSP_DB {
         );
     }
 
+    /* ══════ Emoji veilig opslaan ══════
+       Staat de database op 3-bytes utf8 (niet utf8mb4), dan kan MySQL emoji (4 bytes) niet bewaren en
+       gooit WordPress de hele tekst weg of kapt hem af. Daarom bewaren we emoji als &#x…;-code en
+       zetten we ze bij het ophalen weer terug. Werkt ook als de database wél utf8mb4 is. */
+    public static function emoji_encode( $s ) {
+        $s = (string) $s;
+        return function_exists( 'wp_encode_emoji' ) ? wp_encode_emoji( $s ) : $s;
+    }
+
+    public static function emoji_decode( $s ) {
+        return preg_replace_callback(
+            '/&#x([0-9a-fA-F]{4,6});/',
+            function ( $m ) { return html_entity_decode( $m[0], ENT_QUOTES | ENT_HTML5, 'UTF-8' ); },
+            (string) $s
+        );
+    }
+
+    private static function wb_rij_decode( $rij ) {
+        if ( $rij && is_object( $rij ) ) {
+            if ( isset( $rij->inhoud ) )    $rij->inhoud    = self::emoji_decode( $rij->inhoud );
+            if ( isset( $rij->onderwerp ) ) $rij->onderwerp = self::emoji_decode( $rij->onderwerp );
+        }
+        return $rij;
+    }
+
     /* ══════ Werkbevestiging templates ══════ */
 
     public static function get_wb_templates( $opdrachtgever = '' ) {
         global $wpdb;
         $tbl = PSP_TABLE_WB_TEMPLATES;
         if ( $opdrachtgever ) {
-            return $wpdb->get_results( $wpdb->prepare(
+            $rijen = $wpdb->get_results( $wpdb->prepare(
                 "SELECT * FROM $tbl WHERE opdrachtgever = %s ORDER BY naam ASC",
                 $opdrachtgever
             ) );
+        } else {
+            $rijen = $wpdb->get_results( "SELECT * FROM $tbl ORDER BY opdrachtgever ASC, naam ASC" );
         }
-        return $wpdb->get_results( "SELECT * FROM $tbl ORDER BY opdrachtgever ASC, naam ASC" );
+        return array_map( array( __CLASS__, 'wb_rij_decode' ), (array) $rijen );
     }
 
     public static function get_wb_ogs() {
@@ -422,8 +449,8 @@ class PSP_DB {
         $id            = (int) ( isset( $data['wb_id'] ) ? $data['wb_id'] : 0 );
         $opdrachtgever = sanitize_text_field( isset( $data['opdrachtgever'] ) ? $data['opdrachtgever'] : '' );
         $naam          = sanitize_text_field( isset( $data['naam'] ) ? $data['naam'] : '' );
-        $onderwerp     = sanitize_text_field( isset( $data['onderwerp'] ) ? $data['onderwerp'] : '' );
-        $inhoud        = wp_kses_post( isset( $data['inhoud'] ) ? $data['inhoud'] : '' );
+        $onderwerp     = self::emoji_encode( sanitize_text_field( isset( $data['onderwerp'] ) ? $data['onderwerp'] : '' ) );
+        $inhoud        = self::emoji_encode( wp_kses_post( isset( $data['inhoud'] ) ? $data['inhoud'] : '' ) );
 
         if ( $id ) {
             $wpdb->update(
@@ -470,8 +497,8 @@ class PSP_DB {
         $dienst_id    = (int) ( isset($data['dienst_id'])    ? $data['dienst_id']    : 0 );
         $student_email= sanitize_email( isset($data['student_email']) ? $data['student_email'] : '' );
         $opdrachtgever= sanitize_text_field( isset($data['opdrachtgever']) ? $data['opdrachtgever'] : '' );
-        $onderwerp    = sanitize_text_field( isset($data['onderwerp'])     ? $data['onderwerp']     : '' );
-        $inhoud       = wp_kses_post( isset($data['inhoud']) ? $data['inhoud'] : '' );
+        $onderwerp    = self::emoji_encode( sanitize_text_field( isset($data['onderwerp'])     ? $data['onderwerp']     : '' ) );
+        $inhoud       = self::emoji_encode( wp_kses_post( isset($data['inhoud']) ? $data['inhoud'] : '' ) );
 
         // Upsert op dienst_id
         $existing = $wpdb->get_var( $wpdb->prepare(
@@ -529,15 +556,15 @@ class PSP_DB {
 
     public static function get_wb_voor_dienst( $dienst_id ) {
         global $wpdb;
-        return $wpdb->get_row( $wpdb->prepare(
+        return self::wb_rij_decode( $wpdb->get_row( $wpdb->prepare(
             "SELECT * FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " WHERE dienst_id = %d LIMIT 1",
             $dienst_id
-        ) );
+        ) ) );
     }
 
     public static function get_wbs_voor_student( $email ) {
         global $wpdb;
-        return $wpdb->get_results( $wpdb->prepare(
+        $rijen = $wpdb->get_results( $wpdb->prepare(
             "SELECT w.*, d.datum, d.tijdstip_van, d.tijdstip_tot, d.locatie, d.type_werk
              FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " w
              LEFT JOIN " . PSP_TABLE_DIENSTEN . " d ON d.id = w.dienst_id
@@ -545,6 +572,7 @@ class PSP_DB {
              ORDER BY w.verzonden_op DESC",
             $email
         ) );
+        return array_map( array( __CLASS__, 'wb_rij_decode' ), (array) $rijen );
     }
 
     public static function bevestig_wb( $id, $email ) {
