@@ -464,8 +464,17 @@
       openLijst.innerHTML = '<p class="psp-empty-msg">Geen — voor elke openstaande dienst is er minstens één beschikbare student.</p>';
     } else {
       volledigOpen.sort(function (a, b) { return a.datum.localeCompare(b.datum); });
-      openLijst.innerHTML = volledigOpen.map(function (d) {
-        return '<div class="psp-ip-open-card"><strong>' + esc(d.titel) + '</strong> — ' + esc(d.opdrachtgever) +
+      // Identieke diensten (zelfde klant, dag, tijden en naam zonder "(1/3)") samenvoegen: "×3"
+      var groepenOpen = [], index = {};
+      volledigOpen.forEach(function (d) {
+        var basis = String(d.titel || '').replace(/\s*\(\d+\/\d+\)\s*$/, '');
+        var key = [d.opdrachtgever, d.datum, d.tijdstip_van, d.tijdstip_tot, basis].join('|');
+        if (index[key] === undefined) { index[key] = groepenOpen.length; groepenOpen.push({ d: d, basis: basis, n: 0 }); }
+        groepenOpen[index[key]].n++;
+      });
+      openLijst.innerHTML = groepenOpen.map(function (g) {
+        var d = g.d;
+        return '<div class="psp-ip-open-card"><strong>' + esc(g.basis) + (g.n > 1 ? ' <span style="color:#d31775">×' + g.n + '</span>' : '') + '</strong> — ' + esc(d.opdrachtgever) +
           '<div class="psp-ip-dienst-meta">' + fmtNL(new Date(d.datum)) + ' · ' + d.tijdstip_van + '–' + d.tijdstip_tot + (d.locatie ? ' · ' + esc(d.locatie) : '') + '</div></div>';
       }).join('');
     }
@@ -566,7 +575,7 @@
         '<td>' + d.tijdstip_van + '–' + d.tijdstip_tot + '</td>' +
         '<td><span class="psp-status-badge ' + dienstBadgeCls(d) + '">' + dienstBadgeTxt(d) + '</span></td>' +
         '<td>' + (kop ? '<strong>' + esc(kop.naam) + '</strong><br><small>' + esc(kop.email) + '</small>' : '<span style="color:#ccc">—</span>') + '</td>' +
-        '<td><button class="psp-tbl-action" data-id="' + d.id + '">Bewerken</button> <button class="psp-tbl-del" data-id="' + d.id + '" data-naam="' + esc(d.titel) + '">🗑</button></td></tr>';
+        '<td><button class="psp-tbl-action" data-id="' + d.id + '">Bewerken</button> <button class="psp-tbl-dup" data-id="' + d.id + '" title="Dupliceer deze dienst (bijv. voor extra personen)">&#10697;</button> <button class="psp-tbl-del" data-id="' + d.id + '" data-naam="' + esc(d.titel) + '">🗑</button></td></tr>';
     });
     html += '</tbody></table>';
     wrap.innerHTML = '<div class="psp-panel-body">' + html + '</div>';
@@ -574,6 +583,12 @@
       btn.addEventListener('click', function () {
         var d = state.data.diensten.find(function (x) { return x.id === parseInt(btn.dataset.id); });
         if (d) openDienstModal(d);
+      });
+    });
+    wrap.querySelectorAll('.psp-tbl-dup').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var d = state.data.diensten.find(function (x) { return x.id === parseInt(btn.dataset.id); });
+        if (d) openDienstModal(d, true);
       });
     });
     wrap.querySelectorAll('.psp-tbl-del').forEach(function (btn) {
@@ -812,8 +827,8 @@
       var data = {}; new FormData(e.target).forEach(function (v, k) { data[k] = v; });
       var btn = document.getElementById('psp-dienst-save-btn');
       btn.disabled = true; btn.textContent = 'Opslaan…';
-      ajax('psp_save_dienst', data, function () {
-        toast('Dienst opgeslagen.', 'success');
+      ajax('psp_save_dienst', data, function (res) {
+        toast((res && res.message) ? res.message : 'Dienst opgeslagen.', 'success');
         document.getElementById('psp-modal-dienst').style.display = 'none';
         btn.disabled = false; btn.textContent = 'Opslaan'; loadWeek();
       }, function (msg) { toast(msg || 'Opslaan mislukt.', 'error'); btn.disabled = false; btn.textContent = 'Opslaan'; });
@@ -827,16 +842,23 @@
     });
   }
 
-  function openDienstModal(dienst) {
+  function openDienstModal(dienst, dupliceer) {
     var form = document.getElementById('psp-dienst-form');
     form.reset();
-    document.getElementById('psp-modal-dienst-title').textContent = dienst ? 'Dienst bewerken' : 'Nieuwe dienst';
-    document.getElementById('psp-dienst-delete-btn').style.display = dienst ? '' : 'none';
+    var bewerken = !!dienst && !dupliceer;
+    document.getElementById('psp-modal-dienst-title').textContent = dupliceer ? 'Dienst dupliceren' : (dienst ? 'Dienst bewerken' : 'Nieuwe dienst');
+    document.getElementById('psp-dienst-delete-btn').style.display = bewerken ? '' : 'none';
+    var aantalWrap = document.getElementById('psp-dienst-aantal-wrap');
+    if (aantalWrap) aantalWrap.style.display = bewerken ? 'none' : '';
     if (dienst) {
       ['dienst_id','titel','opdrachtgever','datum','tijdstip_van','tijdstip_tot','locatie','type_werk','omschrijving'].forEach(function (k) {
         var el = form.querySelector('[name="' + k + '"]');
         if (el) el.value = dienst[k] || '';
       });
+      if (dupliceer) {
+        form.querySelector('[name="dienst_id"]').value = '';
+        form.querySelector('[name="titel"]').value = String(dienst.titel || '').replace(/\s*\(\d+\/\d+\)\s*$/, '');
+      }
     } else {
       form.querySelector('[name="dienst_id"]').value = '';
       form.querySelector('[name="datum"]').value = fmt(state.week);

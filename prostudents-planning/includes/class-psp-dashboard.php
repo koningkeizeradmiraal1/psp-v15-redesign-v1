@@ -381,6 +381,11 @@ class PSP_Dashboard {
           <div class="psp-field"><label>Type werk</label><input type="text" name="type_werk" placeholder="Bediening, Productie…"></div>
         </div>
         <div class="psp-field"><label>Omschrijving</label><textarea name="omschrijving" rows="3"></textarea></div>
+        <div class="psp-field" id="psp-dienst-aantal-wrap" style="background:#f8f9fa;border:1px solid #e3e6e8;border-radius:8px;padding:10px 14px">
+          <label>Aantal personen</label>
+          <input type="number" name="aantal" id="psp-dienst-aantal" min="1" max="50" value="1" style="max-width:100px">
+          <small style="color:#777">Meer dan 1? Dan worden er evenveel diensten aangemaakt met dezelfde gegevens, genummerd als &ldquo;Naam (1/3)&rdquo;. Elke plek koppel je aan een eigen student.</small>
+        </div>
       </div>
       <div class="psp-modal-footer">
         <button type="submit" class="psp-btn-primary" id="psp-dienst-save-btn">Opslaan</button>
@@ -706,6 +711,17 @@ class PSP_Dashboard {
         if ( $id ) {
             PSP_DB::update_dienst( $id, $data );
         } else {
+            // Nieuw: eventueel meerdere diensten (zelfde dag/tijden) in één keer aanmaken
+            $aantal = max( 1, min( 50, (int) ( $_POST['aantal'] ?? 1 ) ) );
+            if ( $aantal > 1 ) {
+                $basis_titel = $data['titel'];
+                $ids = array();
+                for ( $i = 1; $i <= $aantal; $i++ ) {
+                    $data['titel'] = $basis_titel . ' (' . $i . '/' . $aantal . ')';
+                    $ids[] = PSP_DB::insert_dienst( $data );
+                }
+                wp_send_json_success( array( 'dienst_id' => $ids[0], 'message' => $aantal . ' diensten aangemaakt.', 'aantal' => $aantal ) );
+            }
             $id = PSP_DB::insert_dienst( $data );
         }
         wp_send_json_success( array( 'dienst_id' => $id, 'message' => 'Dienst opgeslagen.' ) );
