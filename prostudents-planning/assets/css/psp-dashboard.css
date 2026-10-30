@@ -412,6 +412,7 @@ body.psp-fullpage { overflow: hidden; }
   margin-left: auto; transition: background .15s;
 }
 .psp-btn-danger:hover { background: #fef2f2; border-color: #f87171; }
+.psp-btn-danger:focus, .psp-btn-danger:active, .psp-btn-danger:focus-visible { background: #fef2f2; border-color: #f87171; color: #b91c1c; outline: none; box-shadow: none; }
 
 /* ── Modals ── */
 .psp-modal {

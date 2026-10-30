@@ -857,11 +857,17 @@
       }, function (msg) { toast(msg || 'Opslaan mislukt.', 'error'); btn.disabled = false; btn.textContent = 'Opslaan'; });
     });
     document.getElementById('psp-dienst-delete-btn').addEventListener('click', function () {
+      var delBtn = this;
       var id = document.getElementById('psp-dienst-id').value;
-      if (!id || !confirm('Dienst verwijderen?')) return;
+      if (!id) { toast('Deze dienst is nog niet opgeslagen en kan niet worden verwijderd.', 'error'); return; }
+      if (!confirm('Dienst verwijderen? Een eventuele koppeling met een student wordt ook verwijderd.')) return;
+      delBtn.disabled = true;
       ajax('psp_delete_dienst', { dienst_id: id }, function () {
-        toast('Verwijderd.', 'success'); document.getElementById('psp-modal-dienst').style.display = 'none'; loadWeek();
-      });
+        toast('Dienst verwijderd.', 'success');
+        document.getElementById('psp-modal-dienst').style.display = 'none';
+        delBtn.disabled = false;
+        loadWeek();
+      }, function (msg) { toast(msg || 'Verwijderen mislukt.', 'error'); delBtn.disabled = false; });
     });
   }
 
@@ -878,8 +884,9 @@
         var el = form.querySelector('[name="' + k + '"]');
         if (el) el.value = dienst[k] || '';
       });
+      // Het dienst-object heeft het veld "id" (niet "dienst_id"): zonder dit werd bij bewerken een NIEUWE dienst aangemaakt
+      form.querySelector('[name="dienst_id"]').value = dupliceer ? '' : (dienst.id || '');
       if (dupliceer) {
-        form.querySelector('[name="dienst_id"]').value = '';
         form.querySelector('[name="titel"]').value = String(dienst.titel || '').replace(/\s*\(\d+\/\d+\)\s*$/, '');
       }
     } else {
