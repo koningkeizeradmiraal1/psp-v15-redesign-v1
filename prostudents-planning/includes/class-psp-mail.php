@@ -10,7 +10,7 @@ class PSP_Mail {
         $body = "Beste {$beschikbaarheid->naam},\n\n";
         $body .= "Goed nieuws! Je bent ingepland voor de volgende dienst:\n\n";
         $body .= "📅 Datum:          {$datum_nl}\n";
-        $body .= "⏰ Tijd:           {$dienst->tijdstip_van} – {$dienst->tijdstip_tot}\n";
+        $body .= "⏰ Tijd:           " . substr( $dienst->tijdstip_van, 0, 5 ) . " – " . substr( $dienst->tijdstip_tot, 0, 5 ) . "\n";
         $body .= "🏢 Opdrachtgever:  {$dienst->opdrachtgever}\n";
         if ($dienst->locatie)   $body .= "📍 Locatie:        {$dienst->locatie}\n";
         if ($dienst->type_werk) $body .= "💼 Werkzaamheden:  {$dienst->type_werk}\n";

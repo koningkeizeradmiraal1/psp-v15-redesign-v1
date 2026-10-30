@@ -665,8 +665,8 @@ class PSP_Dashboard {
                 'titel'         => $d->titel,
                 'opdrachtgever' => $d->opdrachtgever,
                 'datum'         => $d->datum,
-                'tijdstip_van'  => $d->tijdstip_van,
-                'tijdstip_tot'  => $d->tijdstip_tot,
+                'tijdstip_van'  => substr( $d->tijdstip_van, 0, 5 ),   // uu:mm, zonder seconden
+                'tijdstip_tot'  => substr( $d->tijdstip_tot, 0, 5 ),
                 'locatie'       => $d->locatie,
                 'type_werk'     => $d->type_werk,
                 'omschrijving'  => $d->omschrijving,
