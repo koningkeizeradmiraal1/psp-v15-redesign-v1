@@ -225,6 +225,7 @@ class PSP_Dashboard {
     <div class="psp-inplannen-toolbar">
       <div class="psp-inplannen-legenda">
         <span><span class="psp-ip-legenda-dot beschikbaar"></span> Beschikbaar</span>
+        <span><span class="psp-ip-legenda-dot open"></span> Nog in te plannen</span>
         <span><span class="psp-ip-legenda-dot ingepland"></span> Ingepland</span>
         <span><span class="psp-ip-legenda-dot niet"></span> Niet beschikbaar</span>
       </div>

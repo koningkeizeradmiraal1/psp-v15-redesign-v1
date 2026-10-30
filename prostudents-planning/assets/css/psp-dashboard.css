@@ -291,7 +291,8 @@ body.psp-fullpage { overflow: hidden; }
 
 .psp-cell { text-align: center; min-width: 100px; }
 .psp-cell-leeg        { background: #fafafa !important; }
-.psp-cell-beschikbaar { background: var(--psp-pink-lt) !important; }
+/* Beschikbare student = neutraal; groen = ingepland; roze = dienst die nog ingepland moet worden */
+.psp-cell-beschikbaar { background: #f8fafc !important; }
 .psp-cell-ingepland   { background: var(--psp-green-lt) !important; }
 .psp-cell-highlight   { background: #ffe0f0 !important; outline: 2px solid var(--psp-pink); }
 .psp-cell-time  { font-size: .7rem; color: #999; }
@@ -564,7 +565,7 @@ body.psp-fullpage { overflow: hidden; }
 .psp-grid th.psp-th-selected {
   background: var(--psp-pink-lt); color: var(--psp-pink); border-bottom-color: var(--psp-pink);
 }
-.psp-cell-heeft-open { background: var(--psp-pink-mlt) !important; }
+.psp-cell-heeft-open { background: #f8fafc !important; }
 .psp-assign-btn-highlight {
   background: var(--psp-pink) !important;
   animation: psp-pulse .8s ease infinite alternate;
@@ -587,7 +588,8 @@ body.psp-fullpage { overflow: hidden; }
 }
 .psp-inplannen-legenda { display: flex; gap: 14px; font-size: .72rem; color: #666; align-items: center; flex-wrap: wrap; }
 .psp-ip-legenda-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
-.psp-ip-legenda-dot.beschikbaar { background: var(--psp-pink-mlt); border: 1px solid #f0a0cc; }
+.psp-ip-legenda-dot.beschikbaar { background: #f8fafc; border: 1px solid #cbd5e1; }
+.psp-ip-legenda-dot.open        { background: var(--psp-pink-mlt); border: 1px solid #f0a0cc; }
 .psp-ip-legenda-dot.ingepland   { background: var(--psp-green-lt); border: 1px solid var(--psp-green); }
 .psp-ip-legenda-dot.niet        { background: #f5f5f5; border: 1px solid var(--psp-border); }
 .psp-inplannen-col-header {
@@ -628,9 +630,9 @@ th.psp-ip-grid-namecol { z-index: 2; }
   color: #ddd;
   background: repeating-linear-gradient(135deg, #fafafa, #fafafa 6px, #f2f2f2 6px, #f2f2f2 12px);
 }
-.psp-ip-cell.beschikbaar { background: var(--psp-pink-mlt); color: var(--psp-pink-dark); padding: 6px 4px; }
+.psp-ip-cell.beschikbaar { background: #f8fafc; color: #374151; padding: 6px 4px; }
 .psp-ip-cell.beschikbaar.klikbaar { cursor: pointer; }
-.psp-ip-cell.beschikbaar.klikbaar:hover { background: var(--psp-pink-lt); }
+.psp-ip-cell.beschikbaar.klikbaar:hover { background: #eef2f7; }
 .psp-ip-beschik-tijd { font-weight: 600; }
 .psp-ip-plus { font-size: .62rem; font-weight: 700; margin-top: 2px; color: var(--psp-pink); }
 .psp-ip-cell.ingepland { background: var(--psp-green-lt); padding: 6px 4px; }
