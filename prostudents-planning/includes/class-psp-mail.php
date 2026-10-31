@@ -30,6 +30,32 @@ class PSP_Mail {
         return $ok;
     }
 
+    /* ─── Reminder: werkbevestiging nog niet bevestigd ─── */
+    public static function stuur_wb_reminder( object $wb, object $dienst, string $naam ): bool {
+        $datum_nl = date_i18n( 'l j F Y', strtotime( $dienst->datum ) );
+        $van = substr( $dienst->tijdstip_van, 0, 5 );
+        $tot = substr( $dienst->tijdstip_tot, 0, 5 );
+        $subject = "Herinnering: bevestig je dienst op {$datum_nl} bij {$dienst->opdrachtgever}";
+
+        $body  = "BELANGRIJK: je hebt je dienst nog niet bevestigd.\n";
+        $body .= "Log in op PSPlanning (psplanning.nl), ga naar 'Mijn rooster' en klik bij de dienst op 'Gelezen en akkoord'.\n";
+        $body .= "Pas na jouw bevestiging is de dienst definitief.\n";
+        $body .= "------------------------------------------------------------\n\n";
+        $body .= "Beste {$naam},\n\n";
+        $body .= "Dit is een herinnering voor de volgende dienst:\n\n";
+        $body .= "Opdrachtgever: {$dienst->opdrachtgever}\n";
+        $body .= "Datum:         {$datum_nl}\n";
+        $body .= "Tijdstip:      {$van} – {$tot}\n";
+        if ( $dienst->locatie )   $body .= "Locatie:       {$dienst->locatie}\n";
+        if ( $dienst->type_werk ) $body .= "Type werk:     {$dienst->type_werk}\n";
+        $body .= "\nHeb je vragen of kun je onverhoopt niet komen? Neem dan direct contact op:\n";
+        $body .= "050 – 311 23 22 | info@prostudents.nl\n\n";
+        $body .= "Met vriendelijke groet,\nProStudents Groningen";
+
+        $headers = array( 'Content-Type: text/plain; charset=UTF-8', 'From: ProStudents <info@prostudents.nl>' );
+        return wp_mail( $wb->student_email, $subject, $body, $headers );
+    }
+
     /* ─── Welkomstmail bij goedkeuring aanmelding ─── */
     public static function stuur_welkomstmail( int $user_id ): bool {
         $user = get_user_by( 'id', $user_id );

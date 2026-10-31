@@ -1872,30 +1872,59 @@
     var weekLabel = fmtNL(state.week) + ' t/m ' + fmtNL(addDays(state.week, 6));
     ajax('psp_wb_bevestigingen', { week_start: fmt(state.week) }, function (data) {
       if (!Array.isArray(data) || !data.length) {
-        el.innerHTML = '<p class="psp-empty-msg">Geen openstaande werkbevestigingen, en geen bevestigde voor de week van ' + weekLabel + '.<br><small>Kies een andere week met de pijltjes bovenaan.</small></p>';
+        el.innerHTML = '<p class="psp-empty-msg">Geen werkbevestigingen voor diensten in de week van ' + weekLabel + '.<br><small>Kies een andere week met de pijltjes bovenaan.</small></p>';
         return;
       }
       var open = data.filter(function (r) { return r.status !== 'bevestigd'; }).length;
-      var html = '<p style="margin:0 0 4px;font-size:.82rem;color:#777">Onbevestigde werkbevestigingen uit <strong>alle weken</strong>, plus de bevestigde voor de week van <strong>' + weekLabel + '</strong> (kies een andere week met de pijltjes bovenaan)</p>'
-        + '<p style="margin:0 0 12px;font-size:.88rem"><strong>' + open + '</strong> nog niet bevestigd &middot; <strong>' + (data.length - open) + '</strong> bevestigd</p>'
+      var html = '<p style="margin:0 0 4px;font-size:.82rem;color:#777">Werkbevestigingen voor diensten in de week van <strong>' + weekLabel + '</strong> (kies een andere week met de pijltjes bovenaan)</p>'
+        + '<p style="margin:0 0 12px;font-size:.88rem"><strong>' + open + '</strong> nog niet bevestigd &middot; <strong>' + (data.length - open) + '</strong> bevestigd'
+        + (open ? ' <button type="button" class="psp-btn-sm psp-btn-ghost psp-wb-rem-alle-btn" style="margin-left:10px">&#9993; Reminder naar alle ' + open + ' openstaande</button>' : '')
+        + '</p>'
         + '<table class="psp-table"><thead><tr>'
-        + '<th>Student</th><th>Opdrachtgever</th><th>Dienst</th><th>Verzonden</th><th>Status</th>'
+        + '<th>Student</th><th>Opdrachtgever</th><th>Dienst</th><th>Verzonden</th><th>Status</th><th></th>'
         + '</tr></thead><tbody>';
       data.forEach(function (r) {
         var dienst = r.datum ? fmtNL(new Date(r.datum)) + (r.van ? ' &middot; ' + esc(r.van) + '&ndash;' + esc(r.tot) : '') : '&mdash;';
         var status = r.status === 'bevestigd'
           ? '<strong style="color:#15803d">&#10003; Bevestigd</strong><br><small>' + esc((r.bevestigd_op || '').substring(0, 16)) + '</small>'
-          : '<strong style="color:#b45309">&#9203; Nog niet bevestigd</strong>';
+          : '<strong style="color:#b45309">&#9203; Nog niet bevestigd</strong>'
+            + (r.reminder_op ? '<br><small style="color:#888">Reminder: ' + esc(String(r.reminder_op).substring(0, 16)) + '</small>' : '');
+        var actie = r.status === 'bevestigd' ? ''
+          : '<button type="button" class="psp-btn-sm psp-btn-ghost psp-wb-rem-btn" data-id="' + r.id + '" data-naam="' + esc(r.student_naam) + '">&#9993; Reminder</button>';
         html += '<tr>'
           + '<td><strong>' + esc(r.student_naam) + '</strong><br><small>' + esc(r.student_email) + '</small></td>'
           + '<td>' + esc(r.opdrachtgever) + '</td>'
           + '<td>' + dienst + '</td>'
           + '<td><small>' + esc((r.verzonden_op || '').substring(0, 16)) + '</small></td>'
           + '<td>' + status + '</td>'
+          + '<td>' + actie + '</td>'
           + '</tr>';
       });
       html += '</tbody></table>';
       el.innerHTML = html;
+
+      // Reminder naar één student
+      el.querySelectorAll('.psp-wb-rem-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!confirm('Reminder sturen naar ' + btn.dataset.naam + '?')) return;
+          btn.disabled = true; btn.textContent = '…';
+          ajax('psp_wb_reminder', { wb_id: btn.dataset.id }, function (res) {
+            toast((res && res.message) || '\u2713 Reminder verstuurd.', 'success');
+            laadWbBevestigingen();
+          }, function (msg) { toast(msg || 'Reminder versturen mislukt.', 'error'); btn.disabled = false; btn.innerHTML = '&#9993; Reminder'; });
+        });
+      });
+
+      // Reminder naar alle openstaande van deze week
+      var alleBtn = el.querySelector('.psp-wb-rem-alle-btn');
+      if (alleBtn) alleBtn.addEventListener('click', function () {
+        if (!confirm('Reminder sturen naar alle ' + open + ' studenten die nog niet hebben bevestigd (week van ' + weekLabel + ')?')) return;
+        alleBtn.disabled = true; alleBtn.textContent = 'Versturen…';
+        ajax('psp_wb_reminder', { week_start: fmt(state.week) }, function (res) {
+          toast((res && res.message) || '\u2713 Reminders verstuurd.', 'success');
+          laadWbBevestigingen();
+        }, function (msg) { toast(msg || 'Reminders versturen mislukt.', 'error'); laadWbBevestigingen(); });
+      });
     }, function () {
       el.innerHTML = '<p class="psp-empty-msg" style="color:#c00">Laden mislukt.</p>';
     });

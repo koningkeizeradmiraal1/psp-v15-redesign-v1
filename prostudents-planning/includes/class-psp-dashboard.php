@@ -13,6 +13,7 @@ class PSP_Dashboard {
         add_action('wp_ajax_psp_delete_beschikbaarheid',        [self::class, 'ajax_delete_beschikbaarheid']);
         add_action('wp_ajax_psp_save_beschikbaarheid_admin',    [self::class, 'ajax_save_beschikbaarheid_admin']);
         add_action('wp_ajax_psp_get_aanmeldingen',              [self::class, 'ajax_get_aanmeldingen']);
+        add_action('wp_ajax_psp_wb_reminder',               [self::class, 'ajax_wb_reminder']);
         add_action('wp_ajax_psp_get_besch_student_week',    [self::class, 'ajax_get_besch_student_week']);
         add_action('wp_ajax_psp_verberg_student',           [self::class, 'ajax_verberg_student']);
         add_action('wp_ajax_psp_save_student_instellingen', [self::class, 'ajax_save_student_instellingen']);
@@ -1281,6 +1282,59 @@ class PSP_Dashboard {
         wp_send_json_success( array( 'message' => "✓ Werkbevestiging verstuurd naar {$student_naam}." ) );
     }
 
+    /* ─────────────── Reminders: tijdstip per werkbevestiging (WP-option, geen tabelwijziging) ─────────────── */
+    private static function get_wb_reminder_op( $wb_id ) {
+        $map = get_option( 'psp_wb_reminders', array() );
+        return ( is_array($map) && isset($map[$wb_id]) ) ? $map[$wb_id] : '';
+    }
+    private static function set_wb_reminder_op( $wb_id ) {
+        $map = get_option( 'psp_wb_reminders', array() );
+        if ( ! is_array($map) ) $map = array();
+        $map[ (int) $wb_id ] = current_time('mysql');
+        update_option( 'psp_wb_reminders', $map, false );
+    }
+
+    /* ─────────────── AJAX: reminder sturen (één werkbevestiging, of alle openstaande van de week) ─────────────── */
+    public static function ajax_wb_reminder() {
+        check_ajax_referer('psp_dashboard', 'nonce');
+        if ( ! current_user_can('edit_posts') ) wp_send_json_error();
+
+        $wb_id = (int) ( $_POST['wb_id'] ?? 0 );
+        $week  = sanitize_text_field( $_POST['week_start'] ?? '' );
+
+        // Welke werkbevestigingen krijgen een reminder?
+        $doel = array();
+        if ( $wb_id ) {
+            global $wpdb;
+            $wb = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM " . PSP_TABLE_WERKBEVESTIGINGEN . " WHERE id = %d", $wb_id ) );
+            if ( $wb ) $doel[] = $wb;
+        } elseif ( $week ) {
+            foreach ( PSP_DB::get_wb_overzicht( 500, $week ) as $r ) { $doel[] = $r; }
+        }
+        if ( ! $doel ) wp_send_json_error( array( 'message' => 'Geen werkbevestiging gevonden.' ) );
+
+        $verzonden = 0; $overgeslagen = 0; $mislukt = 0;
+        foreach ( $doel as $wb ) {
+            if ( $wb->status === 'bevestigd' ) { $overgeslagen++; continue; }
+            $dienst = PSP_DB::get_dienst_by_id( (int) $wb->dienst_id );
+            if ( ! $dienst ) { $mislukt++; continue; }
+            $naam = isset( $wb->student_naam ) && $wb->student_naam ? $wb->student_naam : '';
+            if ( ! $naam ) {
+                global $wpdb;
+                $naam = $wpdb->get_var( $wpdb->prepare( "SELECT naam FROM " . PSP_TABLE_BESCHIKBAARHEID . " WHERE email = %s ORDER BY id DESC LIMIT 1", $wb->student_email ) );
+                if ( ! $naam ) $naam = $wb->student_email;
+            }
+            if ( PSP_Mail::stuur_wb_reminder( $wb, $dienst, $naam ) ) { self::set_wb_reminder_op( $wb->id ); $verzonden++; }
+            else { $mislukt++; }
+        }
+
+        if ( ! $verzonden && $mislukt ) wp_send_json_error( array( 'message' => 'Reminder versturen mislukt.' ) );
+        $msg = "✓ {$verzonden} reminder" . ( $verzonden === 1 ? '' : 's' ) . ' verstuurd.';
+        if ( $overgeslagen ) $msg .= " ({$overgeslagen} al bevestigd, overgeslagen)";
+        if ( $mislukt )      $msg .= " {$mislukt} mislukt.";
+        wp_send_json_success( array( 'message' => $msg ) );
+    }
+
     /* ─────────────── AJAX: WB bevestigingen overzicht ─────────────── */
     public static function ajax_wb_bevestigingen() {
         check_ajax_referer('psp_dashboard', 'nonce');
@@ -1302,6 +1356,7 @@ class PSP_Dashboard {
                 'status'        => $r->status,
                 'verzonden_op'  => $r->verzonden_op,
                 'bevestigd_op'  => $r->bevestigd_op,
+                'reminder_op'   => self::get_wb_reminder_op( (int) $r->id ),
             );
         }
         wp_send_json_success( $out );
